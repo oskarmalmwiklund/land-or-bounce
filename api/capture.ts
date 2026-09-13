@@ -1,8 +1,9 @@
 /**
  * GET /api/capture?url=https://example.com
  *
- * Screenshots the top of a landing page at 1440x810 (16:9, the fly's screen shape) with a
- * headless Chromium and returns it as a JPEG data URL, plus the final URL and title.
+ * Screenshots a landing page at 1440x810 (16:9, the fly's screen shape) with a headless
+ * Chromium, one viewport per fold, scrolling between shots (`folds`, default 3, max 4), and
+ * returns them as JPEG data URLs plus the final URL and title.
  * Runs on Vercel with @sparticuz/chromium and locally with the machine's Chrome
  * (`CHROME_PATH`, or the macOS default). Written against Node's http types only, so the
  * same function serves Vercel and the Vite dev middleware.
@@ -19,6 +20,8 @@ export const WIDTH = 1440;
 export const HEIGHT = 810;
 const NAV_TIMEOUT_MS = 20_000;
 const SETTLE_MS = 900;
+const FOLD_SETTLE_MS = 450;
+export const MAX_FOLDS = 4;
 
 const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36';
 
@@ -75,10 +78,18 @@ async function launch(): Promise<Browser> {
   return puppeteer.launch({ executablePath, headless: true, args: ['--hide-scrollbars', '--lang=en-US', '--disable-gpu'], defaultViewport: null });
 }
 
-export interface Capture { url: string; finalUrl: string; title: string; image: string; width: number; height: number; ms: number }
+export interface Capture {
+  url: string; finalUrl: string; title: string;
+  /** the first fold */
+  image: string;
+  /** every fold captured, the first included, top to bottom */
+  folds: string[];
+  pageHeight: number; width: number; height: number; ms: number;
+}
 
 /** Screenshot the page. Throws CaptureError with a message the fly can say out loud. */
-export async function capture(raw: string): Promise<Capture> {
+export async function capture(raw: string, folds = 3): Promise<Capture> {
+  folds = Math.max(1, Math.min(MAX_FOLDS, Math.floor(folds) || 1));
   const t0 = Date.now();
   const url = normaliseUrl(raw);
   await assertPublicHost(url.hostname);
@@ -117,9 +128,22 @@ export async function capture(raw: string): Promise<Capture> {
     const finalUrl = page.url();
     try { await assertPublicHost(new URL(finalUrl).hostname); } catch { throw new CaptureError(400, 'That address led somewhere I will not go.'); }
     const title = (await page.title().catch(() => '')).slice(0, 120);
-    const jpeg = await page.screenshot({ type: 'jpeg', quality: 82, clip: { x: 0, y: 0, width: WIDTH, height: HEIGHT } });
-    const b64 = Buffer.from(jpeg).toString('base64');
-    return { url: url.href, finalUrl, title, image: `data:image/jpeg;base64,${b64}`, width: WIDTH, height: HEIGHT, ms: Date.now() - t0 };
+    // `clip` is in document coordinates, so the viewport is clipped at the current scroll offset
+    const shot = async (scrollY = 0) => `data:image/jpeg;base64,${Buffer.from(await page.screenshot({ type: 'jpeg', quality: 82, captureBeyondViewport: false, clip: { x: 0, y: scrollY, width: WIDTH, height: HEIGHT } })).toString('base64')}`;
+    const images = [await shot()];
+    let pageHeight = HEIGHT;
+    try { pageHeight = await page.evaluate(() => Math.max(document.documentElement.scrollHeight, document.body?.scrollHeight ?? 0)); } catch { /* keep one fold */ }
+    // the folds below: scroll one viewport at a time, give lazy images a beat, shoot the viewport
+    for (let k = 1; k < folds; k++) {
+      const target = k * HEIGHT;
+      if (target >= pageHeight - HEIGHT * 0.25) break;
+      let y = 0;
+      try { y = await page.evaluate((t: number) => { window.scrollTo({ top: t, behavior: 'instant' as ScrollBehavior }); return window.scrollY; }, target); } catch { break; }
+      if (y < target * 0.5) break;                 // the page would not scroll (a fixed-height app shell)
+      await new Promise((r) => setTimeout(r, FOLD_SETTLE_MS));
+      images.push(await shot(y));
+    }
+    return { url: url.href, finalUrl, title, image: images[0], folds: images, pageHeight, width: WIDTH, height: HEIGHT, ms: Date.now() - t0 };
   } finally {
     await browser.close().catch(() => undefined);
   }
@@ -136,8 +160,9 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
   if (req.method !== 'GET') { json(res, 405, { error: 'GET only' }); return; }
   const q = new URL(req.url ?? '/', 'http://x').searchParams;
   const raw = q.get('url') ?? '';
+  const folds = Number(q.get('folds') ?? 3);
   try {
-    const result = await capture(raw);
+    const result = await capture(raw, Number.isFinite(folds) ? folds : 3);
     json(res, 200, result, 'public, s-maxage=900, stale-while-revalidate=3600');
   } catch (err) {
     if (err instanceof CaptureError) { json(res, err.status, { error: err.message, hint: err.hint }, 'no-store'); return; }

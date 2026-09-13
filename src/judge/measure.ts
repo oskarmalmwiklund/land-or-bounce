@@ -155,6 +155,6 @@ export function adapt(rgba: Uint8ClampedArray): Uint8ClampedArray {
 }
 
 /** Everything the fly is shown, from one page frame. The eye adapts to each first. */
-export function variantsOf(page: Uint8ClampedArray): Record<Variant, Uint8ClampedArray> {
+export function variantsOf(page: Uint8ClampedArray): Record<Exclude<Variant, 'fold'>, Uint8ClampedArray> {
   return { page: adapt(page), humangrey: adapt(humanGrey(page)) };
 }

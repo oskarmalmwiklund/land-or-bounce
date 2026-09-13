@@ -2,10 +2,10 @@
 /**
  * The eye lives here. Two modes: "look", where the page streams frames and asks for fly
  * time to pass; and "judge", where the worker shows one landing page through a fixed
- * protocol (the page, then the page as a human sees its brightness) and reports
- * measurements as it goes. No DOM, no rendering.
+ * protocol (the page, the page as a human sees its brightness, then each fold below it)
+ * and reports measurements as it goes. No DOM, no rendering.
  */
-import { groups, heat, metrics, OPERATING_GREY, variantsOf, type Groups } from '../judge/measure';
+import { adapt, groups, heat, metrics, OPERATING_GREY, variantsOf, type Groups } from '../judge/measure';
 import { EyeBrain } from './EyeBrain';
 import { type Circuit, fromData } from './circuit';
 import { VARIANTS, type Snapshot, type WorkerCommand, type WorkerEvent } from './protocol';
@@ -92,7 +92,7 @@ function present(frame: Uint8ClampedArray, exposureMs: number, showing: NonNulla
   return { steady, windows };
 }
 
-async function runJudge(frame: ArrayBuffer, exposureMs: number): Promise<void> {
+async function runJudge(frame: ArrayBuffer, exposureMs: number, folds: ArrayBuffer[] = []): Promise<void> {
   const b = brain!;
   const t0 = performance.now();
   abortRequested = false;
@@ -118,6 +118,21 @@ async function runJudge(frame: ArrayBuffer, exposureMs: number): Promise<void> {
     }
     post({ type: 'judge-measure', variant, metrics: m, flyMs: clock });
     await waitForNarration({ variant });
+  }
+  // the scroll: each fold below the first, adapted and looked at for a second
+  const total = folds.length + 1;
+  for (let k = 0; k < folds.length; k++) {
+    if (abortRequested) { post({ type: 'judge-aborted' }); return; }
+    const fold = k + 2;
+    const f = adapt(new Uint8ClampedArray(folds[k]));
+    b.restore(settled);
+    post({ type: 'judge-step', step: 'show', variant: 'fold', fold, folds: total, flyMs: clock });
+    const { steady, windows } = present(f, exposureMs, { variant: 'fold', fold });
+    const m = metrics(g!, steady, exposureMs / 2000, baseCounts!, baseSec, windows, 0.1);
+    const h = heat(g!, steady, exposureMs / 2000, baseCounts!, baseSec);
+    post({ type: 'judge-heat', heat: h, fold }, [h.u.buffer, h.v.buffer, h.d.buffer]);
+    post({ type: 'judge-measure', variant: 'fold', fold, metrics: m, flyMs: clock });
+    await waitForNarration({ variant: 'fold', fold });
   }
   if (abortRequested) { post({ type: 'judge-aborted' }); return; }
   b.restore(settled);
@@ -155,7 +170,7 @@ self.onmessage = async (event: MessageEvent<WorkerCommand>) => {
         postSnapshot(snapshot(msg.ms - Math.max(0, left), spikes, performance.now() - t0));
         return;
       }
-      case 'judge': void runJudge(msg.frame, msg.exposureMs); return;
+      case 'judge': void runJudge(msg.frame, msg.exposureMs, msg.folds ?? []); return;
       case 'judge-continue': continueResolve?.(); return;
       case 'abort': abortRequested = true; continueResolve?.(); return;
     }

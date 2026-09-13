@@ -19,9 +19,21 @@ const MAX_ADVANCE_MS = 40;
 const BUDGET_MS = 30;
 const EXPOSURE_MS = 1000;
 const LOOK_SPEED = 0.5;
+const DEFAULT_FOLDS = 3;
 const APP_HOST = location.host.replace(/^www\./, '') || 'landorbounce.vercel.app';
 
 type State = 'waking' | 'idle' | 'capturing' | 'judging' | 'result' | 'error';
+
+const ICON = {
+  x: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>',
+  linkedin: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>',
+  bluesky: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 10.8c-1.087-2.114-4.046-6.053-6.798-7.995C2.566.944 1.561 1.266.902 1.565.139 1.908 0 3.08 0 3.768c0 .69.378 5.65.624 6.479.815 2.736 3.713 3.66 6.383 3.364.136-.02.275-.039.415-.056-.138.022-.276.04-.415.056-3.912.58-7.387 2.005-2.83 7.078 5.013 5.19 6.87-1.113 7.823-4.308.953 3.195 2.05 9.271 7.733 4.308 4.267-4.308 1.172-6.498-2.74-7.078a8.741 8.741 0 0 1-.415-.056c.14.017.279.036.415.056 2.67.297 5.568-.628 6.383-3.364.246-.828.624-5.79.624-6.478 0-.69-.139-1.861-.902-2.206-.659-.298-1.664-.62-4.3 1.24C16.046 4.748 13.087 8.687 12 10.8Z"/></svg>',
+  facebook: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>',
+  share: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" d="M12 3v12m0-12 4 4m-4-4L8 7M5 13v6a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-6"/></svg>',
+  copy: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" d="M9 9h10v11H9zM5 15V4h10"/></svg>',
+  save: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" d="M12 4v11m0 0 4-4m-4 4-4-4M4 19h16"/></svg>',
+  link: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" d="M10 14a4 4 0 0 0 5.66 0l2.83-2.83a4 4 0 0 0-5.66-5.66L11.5 6.83M14 10a4 4 0 0 0-5.66 0l-2.83 2.83a4 4 0 0 0 5.66 5.66l1.33-1.32"/></svg>',
+};
 
 const app = document.getElementById('app')!;
 app.innerHTML = `
@@ -69,18 +81,13 @@ app.innerHTML = `
     <div class="result" id="result" hidden>
       <div class="verdict">
         <div class="score" aria-live="polite"><span class="num" id="scoreNum">0</span><span class="den">/100</span></div>
-        <div class="band"><h2 id="bandTitle"></h2><p id="bandLine"></p><p class="site" id="bandSite"></p></div>
+        <div class="band"><h2 id="bandTitle"></h2><p id="bandLine"></p><p class="scroll-note" id="bandScroll" hidden></p><p class="site" id="bandSite"></p></div>
       </div>
       <ol class="parts" id="parts"></ol>
       <div class="share" id="share">
-        <button type="button" class="primary-button" id="shareButton">Share the card</button>
-        <button type="button" class="secondary-button" id="copyButton">Copy image</button>
-        <button type="button" class="secondary-button" id="saveButton">Save PNG</button>
-        <button type="button" class="secondary-button" id="linkButton">Copy link</button>
-        <a class="secondary-button" id="xButton" target="_blank" rel="noopener">Post on X</a>
-        <a class="secondary-button" id="liButton" target="_blank" rel="noopener">LinkedIn</a>
+        <button type="button" class="primary-button share-button" id="shareButton">${ICON.share}<span>Share the card</span></button>
+        <div class="folds" id="foldPicker" hidden></div>
       </div>
-      <div class="card-preview" id="cardPreview" hidden><img id="cardImg" alt="The share card"></div>
       <details class="transcript" id="transcriptBox"><summary>Everything the fly said</summary><ol id="transcript"></ol></details>
       <button type="button" class="text-button again" id="againButton">Try another page</button>
     </div>
@@ -92,6 +99,28 @@ app.innerHTML = `
     <a href="https://github.com/oskarmalmwiklund/land-or-bounce" target="_blank" rel="noopener">Source</a>
   </footer>
 </main>
+
+<dialog class="dialog share-dialog" id="shareDialog">
+  <div class="dialog-body">
+    <button type="button" class="icon-button dialog-close" id="shareClose" aria-label="Close">✕</button>
+    <h2 id="shareTitle">Share the verdict</h2>
+    <p class="share-sub">This is the card. Pick a place, and the fly comes with a line back here.</p>
+    <div class="card-preview"><img id="cardImg" alt="The share card"></div>
+    <div class="post-preview"><span class="who">Your post</span><p id="postText"></p></div>
+    <div class="share-grid">
+      <button type="button" class="share-opt" data-share="x">${ICON.x}<span>Post on X</span></button>
+      <button type="button" class="share-opt" data-share="linkedin">${ICON.linkedin}<span>LinkedIn</span></button>
+      <button type="button" class="share-opt" data-share="bluesky">${ICON.bluesky}<span>Bluesky</span></button>
+      <button type="button" class="share-opt" data-share="facebook">${ICON.facebook}<span>Facebook</span></button>
+      <button type="button" class="share-opt" data-share="native" id="nativeShare" hidden>${ICON.share}<span>Share…</span></button>
+      <button type="button" class="share-opt quiet" data-share="copy">${ICON.copy}<span>Copy image</span></button>
+      <button type="button" class="share-opt quiet" data-share="save">${ICON.save}<span>Save PNG</span></button>
+      <button type="button" class="share-opt quiet" data-share="link">${ICON.link}<span>Copy link</span></button>
+    </div>
+    <p class="share-note">Posting sites do not take images from a link, so the card is copied to your clipboard on the way out. Paste it into the post.</p>
+  </div>
+</dialog>
+
 <dialog class="dialog" id="about">
   <div class="dialog-body">
     <button type="button" class="icon-button dialog-close" id="aboutClose" aria-label="Close">✕</button>
@@ -99,7 +128,7 @@ app.innerHTML = `
     <p>Every neuron in the fly is a real cell from the male fruit fly connectome (MaleCNS v1.0): the photoreceptors that sample the screen, the lamina where fly vision makes its first decision, and the cells that feed back onto it. The wiring and synapse counts are the published ones. The dynamics are a simple integrate-and-fire model, the same one the whole-brain fly simulators use, running in a Web Worker in this tab.</p>
     <div class="facts" id="facts"></div>
     <h3>What happens</h3>
-    <p>We screenshot the top of your page at 1440×810 and shrink it to the fly’s 320×180 screen. The eye adapts to the page’s average brightness, the way real photoreceptors do, then looks for one second. Then it looks at the page in grey, weighted the way a human sees brightness, to find out what it is missing. Everything the fly says is a measurement that just happened.</p>
+    <p>We screenshot your page at 1440×810, one viewport per fold, up to three folds down. Each is shrunk to the fly’s 320×180 screen. The eye adapts to the page’s average brightness, the way real photoreceptors do, then looks at the top of the page for one second. Then it looks at the top in grey, weighted the way a human sees brightness, to find out what it is missing. Then it scrolls, one fold at a time. Everything the fly says is a measurement that just happened.</p>
     <h3>The five parts</h3>
     <dl>
       <dt>Notice <small>25</small></dt><dd>Mean change in firing of the L1–L3 lamina cells against a grey screen, in Hz per cell. Under about 1.2 Hz is a blank to this eye; dark pages with bright elements run past 10.</dd>
@@ -108,6 +137,8 @@ app.innerHTML = `
       <dt>Balance <small>15</small></dt><dd>The left eye sees the left 60 % of the screen and the right eye the right 60 %. Both should be working.</dd>
       <dt>Fly-safe colour <small>15</small></dt><dd>The fly’s glance at the real page over its glance at a human-luminance grey version. R1–R6 weight the primaries about 3 % red, 42 % green, 55 % blue; anything that is red on your page is nearly dark to it.</dd>
     </dl>
+    <h3>The scroll</h3>
+    <p>The score is the top of the page, because that is what a landing page is judged on. The folds below get the same one-second look and the fly reports which fold moved it most. If that is not the top, it says so, on the card too.</p>
     <h3>What it cannot tell you</h3>
     <p>It cannot read. It has no memory of brands and no idea what a button is. In the full 166,700-neuron model the image signal stops at the lamina, so this page shows exactly the part that carries signal: pre-attentive salience at the first synapse, nothing deeper. Dark pages with bright elements are high contrast to this eye and score well on Notice; that is a property of the eye, not a design recommendation.</p>
     <p>Built on <a href="https://github.com/oskarmalmwiklund/swat-or-buy" target="_blank" rel="noopener">Swat or Buy</a>, which judges ads the same way. Simulator lineage: Bananflugakompassen and Stonkfly (MIT).</p>
@@ -117,6 +148,8 @@ app.innerHTML = `
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 const page = $('page'), roomCanvas = $<HTMLCanvasElement>('room'), screenCanvas = $<HTMLCanvasElement>('screen'), screenFrame = $('screenFrame');
 
+interface Current { host: string; url: string | null; folds: HTMLImageElement[] }
+
 let circuit: Circuit;
 let screen: Screen;
 let room: Room;
@@ -125,12 +158,12 @@ let settled = false;
 let inFlight = false;
 let lastWall = performance.now();
 let narrator: Narrator | null = null;
-let variantFrames: Record<Variant, Uint8ClampedArray> | null = null;
-let heat: Heat | null = null;
+let variantFrames: Record<Exclude<Variant, 'fold'>, Uint8ClampedArray> | null = null;
+let heats = new Map<number, Heat>();          // by fold, 1-based
 let typeQueue: Line[] = [];
 let typing = false;
-let transcript: Line[] = [];
-let current: { host: string; url: string | null; image: HTMLImageElement } | null = null;
+let current: Current | null = null;
+let shownFold = 1;
 let lastScore: Score | null = null;
 let lastCard: CardInput | null = null;
 let cardCanvas: HTMLCanvasElement | null = null;
@@ -144,19 +177,20 @@ function toast(text: string): void {
   el.className = 'toast'; el.setAttribute('role', 'status'); el.textContent = text;
   document.body.append(el);
   requestAnimationFrame(() => el.classList.add('in'));
-  setTimeout(() => { el.classList.remove('in'); setTimeout(() => el.remove(), 400); }, 3200);
+  setTimeout(() => { el.classList.remove('in'); setTimeout(() => el.remove(), 400); }, 3600);
 }
 const escapeHtml = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!));
 const hostOf = (u: string) => { try { return new URL(u).host.replace(/^www\./, ''); } catch { return u; } };
+const foldsWanted = () => { const f = Number(new URLSearchParams(location.search).get('folds')); return Number.isFinite(f) && f >= 1 ? Math.min(4, Math.floor(f)) : DEFAULT_FOLDS; };
 
 // ---- the show -----------------------------------------------------------------------------
 function resetShow(): void {
-  narrator = null; variantFrames = null; heat = null; typeQueue = []; transcript = []; typing = false;
+  narrator = null; variantFrames = null; heats = new Map(); typeQueue = []; typing = false; shownFold = 1;
   lastScore = null; lastCard = null; cardCanvas = null;
   screen.override = null; screen.overrideKind = null; screen.heat = null; screen.setLanding(null); screen.resetGlance();
   $('stamp').hidden = true; $('stamp').className = 'stamp';
   $('variantTag').hidden = true; $('oops').hidden = true; $('veil').hidden = true;
-  $('result').hidden = true; $('cardPreview').hidden = true; $('transcript').innerHTML = '';
+  $('result').hidden = true; $('transcript').innerHTML = ''; $('foldPicker').hidden = true; $('bandScroll').hidden = true;
   $('captionText').textContent = ''; $('caption').classList.remove('on');
   room.mood = 'idle';
 }
@@ -178,7 +212,7 @@ async function loadImage(src: string): Promise<HTMLImageElement> {
   return img;
 }
 
-/** Fetch a screenshot from the API and judge it. */
+/** Fetch screenshots from the API and judge them. */
 async function judgeUrl(raw: string): Promise<void> {
   if (state === 'capturing' || state === 'judging' || !settled) return;
   const typed = raw.trim().replace(/^https?:\/\//i, '');
@@ -192,16 +226,18 @@ async function judgeUrl(raw: string): Promise<void> {
   room.mood = 'judging';
   const t0 = performance.now();
   try {
-    const res = await fetch(`/api/capture?url=${encodeURIComponent(typed)}`);
+    const res = await fetch(`/api/capture?url=${encodeURIComponent(typed)}&folds=${foldsWanted()}`);
     const body = await res.json().catch(() => ({ error: 'The kitchen went quiet.' }));
     if (!res.ok) { showOops(body.error ?? 'I could not get there.', body.hint ?? 'Drop a screenshot and I will judge that.'); return; }
     if ((state as State) !== 'capturing') return;   // the visitor moved on while we were flying
-    const image = await loadImage(body.image);
+    const srcs: string[] = Array.isArray(body.folds) && body.folds.length ? body.folds : [body.image];
+    const folds = await Promise.all(srcs.map(loadImage));
     const host = hostOf(body.finalUrl || body.url);
-    current = { host, url: body.finalUrl || body.url, image };
-    history.replaceState(null, '', `?site=${encodeURIComponent(host === hostOf(`https://${typed}`) ? typed : body.finalUrl)}`);
+    current = { host, url: body.finalUrl || body.url, folds };
+    const q = new URLSearchParams(); q.set('site', host === hostOf(`https://${typed}`) ? typed : body.finalUrl); if (foldsWanted() !== DEFAULT_FOLDS) q.set('folds', String(foldsWanted()));
+    history.replaceState(null, '', `?${q}`);
     document.title = `${host} · Land or Bounce`;
-    $('veilText').textContent = `Got it in ${((performance.now() - t0) / 1000).toFixed(1)} s. Waking the eye…`;
+    $('veilText').textContent = `Got ${folds.length === 1 ? 'it' : `${folds.length} folds`} in ${((performance.now() - t0) / 1000).toFixed(1)} s. Waking the eye…`;
     await startJudge();
   } catch (err) {
     showOops('Something in the kitchen went wrong.', err instanceof Error ? err.message : 'Try again, or drop a screenshot.');
@@ -221,7 +257,7 @@ async function judgeFile(file: File): Promise<void> {
     const url = URL.createObjectURL(file);
     const image = await loadImage(url);
     const host = file.name.replace(/\.[a-z0-9]+$/i, '').slice(0, 40) || 'your screenshot';
-    current = { host, url: null, image };
+    current = { host, url: null, folds: [image] };
     history.replaceState(null, '', location.pathname);
     document.title = `${host} · Land or Bounce`;
     await startJudge();
@@ -230,18 +266,19 @@ async function judgeFile(file: File): Promise<void> {
 
 async function startJudge(): Promise<void> {
   if (!current) return;
-  screen.image = current.image;
+  screen.image = current.folds[0];
   screen.override = null; screen.overrideKind = 'page';
   const frame = screen.paintFlyScreen();
   if (!frame) { showOops('The screenshot came out empty.'); return; }
   variantFrames = variantsOf(frame.data);
+  const foldBuffers = current.folds.slice(1).map((img) => screen.frameOf(img)!.data.slice().buffer);
   narrator = new Narrator(current.host);
   setState('judging');
   $('veil').hidden = true;
   $('caption').classList.add('on');
   inFlight = true;    // the worker owns the clock until judge-done
   const buf = frame.data.slice().buffer;
-  send({ type: 'judge', frame: buf, exposureMs: EXPOSURE_MS }, [buf]);
+  send({ type: 'judge', frame: buf, exposureMs: EXPOSURE_MS, folds: foldBuffers }, [buf, ...foldBuffers]);
 }
 
 function endJudge(): void {
@@ -250,15 +287,13 @@ function endJudge(): void {
 }
 
 // ---- narration --------------------------------------------------------------------------
-const VARIANT_TAG: Record<Variant | 'grey', string> = { grey: 'grey screen', page: 'your page, adapted', humangrey: 'human brightness, in grey' };
-
-function stageFor(variant: Variant | 'grey'): void {
+function stageFor(variant: Variant | 'grey', fold = 1): void {
   const tag = $('variantTag');
   tag.hidden = false;
-  tag.textContent = VARIANT_TAG[variant];
-  if (variant === 'page') { screen.image = current?.image ?? null; screen.override = null; screen.overrideKind = 'page'; }
-  else if (variant === 'grey') { screen.override = null; screen.overrideKind = 'grey'; screen.image = null; }
-  else { screen.image = current?.image ?? null; screen.override = variantFrames ? new ImageData(variantFrames[variant].slice(), SCREEN_W, SCREEN_H) : null; screen.overrideKind = variant; }
+  if (variant === 'page') { tag.textContent = 'your page, adapted'; screen.scrollTo(current!.folds[0], -1); shownFold = 1; }
+  else if (variant === 'grey') { tag.textContent = 'grey screen'; screen.override = null; screen.overrideKind = 'grey'; screen.image = null; }
+  else if (variant === 'fold') { tag.textContent = `fold ${fold} of ${current!.folds.length}, adapted`; screen.scrollTo(current!.folds[fold - 1], 1); shownFold = fold; }
+  else { tag.textContent = 'human brightness, in grey'; screen.image = current?.folds[0] ?? null; screen.override = variantFrames ? new ImageData(variantFrames.humangrey.slice(), SCREEN_W, SCREEN_H) : null; screen.overrideKind = variant; }
   screen.resetGlance();
 }
 
@@ -276,9 +311,8 @@ async function drain(): Promise<void> {
   while (typeQueue.length) {
     const line = typeQueue.shift()!;
     lastKind = line.kind;
-    transcript.push(line);
     const li = document.createElement('li'); li.className = line.kind; li.textContent = line.text; $('transcript').append(li);
-    if (line.kind === 'verdict') { showResult(); }
+    if (line.kind === 'verdict') showResult();
     cap.textContent = '';
     cap.parentElement!.dataset.kind = line.kind;
     const perChar = Math.min(16, 1400 / Math.max(20, line.text.length));
@@ -295,6 +329,19 @@ async function drain(): Promise<void> {
 }
 
 // ---- the result ---------------------------------------------------------------------------
+/** Put fold `k` on the screen with its heat and, where the fly found one, its landing spot. */
+function showFold(k: number): void {
+  if (!current || !narrator) return;
+  const img = current.folds[k - 1];
+  if (!img) return;
+  screen.scrollTo(img, k >= shownFold ? 1 : -1);
+  shownFold = k;
+  screen.heat = heats.get(k) ?? null;
+  const m = k === 1 ? narrator.metrics.page : narrator.folds[k - 2];
+  screen.setLanding(m?.landing ? { u: m.landing.u, v: m.landing.v } : null);
+  $('foldPicker').querySelectorAll<HTMLButtonElement>('button').forEach((b) => b.setAttribute('aria-pressed', String(Number(b.dataset.fold) === k)));
+}
+
 function showResult(): void {
   if (!narrator || !current) return;
   const s = narrator.score();
@@ -302,13 +349,10 @@ function showResult(): void {
   lastScore = s;
   setState('result');
   inFlight = false;
-  const pageMetrics = narrator.metrics.page!;
-  screen.image = current.image; screen.override = null; screen.overrideKind = 'page';
-  screen.heat = heat;
-  const landing = pageMetrics.landing ? { u: pageMetrics.landing.u, v: pageMetrics.landing.v } : null;
-  screen.setLanding(landing);
+  const scroll = narrator.scroll();
   $('variantTag').hidden = true;
   room.mood = s.landed ? 'landed' : 'bounced';
+  showFold(1);
   // the stamp
   const stamp = $('stamp');
   stamp.textContent = s.landed ? 'LANDED' : 'BOUNCED';
@@ -320,6 +364,14 @@ function showResult(): void {
   $('bandTitle').textContent = s.band.title;
   $('bandLine').textContent = s.band.line;
   $('bandSite').textContent = current.host;
+  if (scroll && scroll.total > 1) {
+    $('bandScroll').hidden = false;
+    $('bandScroll').textContent = scroll.best === 1 ? `Scrolled ${scroll.total} folds. The top is the best one.` : `Scrolled ${scroll.total} folds. Fold ${scroll.best} is where the fly would land.`;
+    const picker = $('foldPicker');
+    picker.hidden = false;
+    picker.innerHTML = `<span>Look at</span>` + current.folds.map((_, i) => `<button type="button" data-fold="${i + 1}" aria-pressed="${i === 0}">${i === 0 ? 'the top' : `fold ${i + 1}`}${scroll.best === i + 1 && i > 0 ? ' ★' : ''}</button>`).join('');
+    picker.querySelectorAll<HTMLButtonElement>('button').forEach((b) => b.addEventListener('click', () => showFold(Number(b.dataset.fold))));
+  }
   const num = $('scoreNum');
   const t0 = performance.now();
   const count = () => {
@@ -329,24 +381,67 @@ function showResult(): void {
   };
   count();
   $('parts').innerHTML = s.parts.map((p, i) => `<li style="--d:${i * 90}ms"><div class="head"><b>${p.label}</b><span class="q">${p.question}</span></div><div class="bar"><i style="width:${p.score}%" class="${p.score >= 50 ? 'good' : 'bad'}"></i></div><div class="nums"><span class="mono val">${escapeHtml(p.value)}</span><span class="mono pts">${p.score}<small>/100 · ×${p.weight}</small></span></div></li>`).join('');
-  lastCard = { image: current.image, host: current.host, score: s, heat, landing, appHost: APP_HOST };
+  const pageMetrics = narrator.metrics.page!;
+  lastCard = { image: current.folds[0], host: current.host, score: s, heat: heats.get(1) ?? null, landing: pageMetrics.landing ? { u: pageMetrics.landing.u, v: pageMetrics.landing.v } : null, appHost: APP_HOST, scroll: scroll && scroll.total > 1 ? { best: scroll.best, total: scroll.total } : null };
   cardCanvas = null;
-  const shareUrl = current.url ? `${location.origin}/?site=${encodeURIComponent(current.host)}` : location.origin;
-  const text = `${current.host} scored ${s.total}/100 with a fruit fly’s eye. ${s.band.title} Land or Bounce:`;
-  $<HTMLAnchorElement>('xButton').href = `https://x.com/intent/post?text=${encodeURIComponent(text)}&url=${encodeURIComponent(shareUrl)}`;
-  $<HTMLAnchorElement>('liButton').href = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(shareUrl)}`;
-  void makeCard().then((cv) => { if (cv) { $<HTMLImageElement>('cardImg').src = cv.toDataURL('image/png'); $('cardPreview').hidden = false; } });
+  void makeCard();
   setTimeout(() => $('result').scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 600);
 }
 
+// ---- sharing ------------------------------------------------------------------------------
 async function makeCard(): Promise<HTMLCanvasElement | null> {
   if (!lastCard) return null;
   if (!cardCanvas) cardCanvas = await renderCard(lastCard);
   return cardCanvas;
 }
 const cardName = () => `land-or-bounce-${(current?.host ?? 'page').replace(/[^a-z0-9]+/gi, '-').toLowerCase()}-${lastScore?.total ?? 0}.png`;
-const shareText = () => current && lastScore ? `${current.host} scored ${lastScore.total}/100 with a fruit fly’s eye. ${lastScore.band.title}` : 'Land or Bounce';
 const shareLink = () => current?.url ? `${location.origin}/?site=${encodeURIComponent(current.host)}` : location.origin;
+/** The post: the verdict, then a line that brings people back here. */
+const postText = (withLink: boolean) => {
+  if (!current || !lastScore) return 'Land or Bounce';
+  const verdict = `${current.host} scored ${lastScore.total}/100 with a fruit fly’s eye. ${lastScore.band.title}`;
+  const back = `Release the fly on your own landing page${withLink ? `: ${shareLink()}` : ' at Land or Bounce'}`;
+  return `${verdict}\n\n${back}`;
+};
+
+async function openShare(): Promise<void> {
+  const cv = await makeCard();
+  if (!cv) { toast('No verdict to share yet.'); return; }
+  $<HTMLImageElement>('cardImg').src = cv.toDataURL('image/png');
+  $('postText').textContent = postText(true);
+  $('nativeShare').hidden = !navigator.share;
+  $<HTMLDialogElement>('shareDialog').showModal();
+}
+
+/** Copy the card, then open the posting site with the text. */
+async function shareTo(where: string): Promise<void> {
+  const cv = await makeCard();
+  if (!cv) return;
+  const link = shareLink();
+  const intents: Record<string, string> = {
+    x: `https://x.com/intent/post?text=${encodeURIComponent(postText(false))}&url=${encodeURIComponent(link)}`,
+    linkedin: `https://www.linkedin.com/feed/?shareActive=true&text=${encodeURIComponent(postText(true))}`,
+    bluesky: `https://bsky.app/intent/compose?text=${encodeURIComponent(postText(true))}`,
+    facebook: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(link)}`,
+  };
+  switch (where) {
+    case 'native': {
+      const r = await shareCard(cv, postText(false), link, cardName());
+      if (r === 'unsupported') toast('Sharing is not available here. Pick a site below.');
+      return;
+    }
+    case 'copy': { const ok = await copyImage(cv); toast(ok ? 'Card copied. Paste it anywhere.' : 'Could not copy here. Saving instead.'); if (!ok) void download(cv, cardName()); return; }
+    case 'save': void download(cv, cardName()); return;
+    case 'link': { try { await navigator.clipboard.writeText(link); toast('Link copied. It re-runs the fly on that page.'); } catch { toast(link); } return; }
+  }
+  if (!intents[where]) return;
+  // a posting site: open the window first, while the click still counts as a gesture, then copy the card
+  const win = window.open(intents[where], '_blank', 'noopener');
+  const ok = await copyImage(cv);
+  if (!ok) void download(cv, cardName());
+  toast(ok ? 'Card copied. Paste it into your post.' : 'Card saved. Attach it to your post.');
+  if (!win) toast('Your browser blocked the pop-up. Allow it and try again.');
+}
 
 // ---- main loop ----------------------------------------------------------------------------
 let recentSpikes = 0, spikeShown = 0, lastSpikeDraw = 0;
@@ -364,7 +459,7 @@ function tick(): void {
   const image = state === 'result' ? screen.paintFlyScreen() : null;
   const flyMs = Math.max(10, Math.min(MAX_ADVANCE_MS, Math.round((wallDt * LOOK_SPEED) / 10) * 10));
   inFlight = true;
-  if (image && variantFrames) { const copy = variantFrames.page.slice().buffer; send({ type: 'frame', rgba: copy }, [copy]); }
+  if (image) { const copy = image.data.slice().buffer; send({ type: 'frame', rgba: copy }, [copy]); }
   else send({ type: 'frame', rgba: null });
   send({ type: 'advance', ms: flyMs, budgetMs: BUDGET_MS });
 }
@@ -373,8 +468,8 @@ function onSnapshot(snap: Snapshot): void {
   if (state !== 'judging') inFlight = false;
   if (state === 'judging') screen.setGlance(snap.glance);
   if (snap.showing && state === 'judging') {
-    const v = snap.showing.variant;
-    if (screen.overrideKind !== v) stageFor(v);
+    const v = snap.showing.variant, fold = snap.showing.fold ?? 1;
+    if (v === 'fold' ? shownFold !== fold : screen.overrideKind !== v) stageFor(v, fold);
   }
   recentSpikes = recentSpikes * Math.exp(-snap.advancedMs / 60) + snap.spikes;
   const now = performance.now();
@@ -398,7 +493,7 @@ worker.onmessage = (e: MessageEvent<WorkerEvent>) => {
     case 'judge-step': case 'judge-measure':
       if (narrator) enqueue(narrator.lines(msg));
       break;
-    case 'judge-heat': heat = msg.heat; break;
+    case 'judge-heat': heats.set(msg.fold ?? 1, msg.heat); break;
     case 'judge-done':
       if (narrator) enqueue(narrator.lines(msg));
       inFlight = false;
@@ -459,19 +554,16 @@ async function boot(): Promise<void> {
   });
   $('againButton').addEventListener('click', goIdle);
   $('oopsAgain').addEventListener('click', goIdle);
-  $('shareButton').addEventListener('click', async () => {
-    const cv = await makeCard(); if (!cv) return;
-    const r = await shareCard(cv, shareText(), shareLink(), cardName());
-    if (r === 'unsupported') { const ok = await copyImage(cv); toast(ok ? 'Card copied. Paste it anywhere.' : 'Sharing is not available here. Saved the PNG instead.'); if (!ok) void download(cv, cardName()); }
-  });
-  $('copyButton').addEventListener('click', async () => { const cv = await makeCard(); if (!cv) return; const ok = await copyImage(cv); toast(ok ? 'Card copied. Paste it anywhere.' : 'Could not copy here. Saving instead.'); if (!ok) void download(cv, cardName()); });
-  $('saveButton').addEventListener('click', async () => { const cv = await makeCard(); if (cv) void download(cv, cardName()); });
-  $('linkButton').addEventListener('click', async () => { try { await navigator.clipboard.writeText(shareLink()); toast('Link copied. It re-runs the fly on that page.'); } catch { toast(shareLink()); } });
+  $('shareButton').addEventListener('click', () => { void openShare(); });
+  const shareDialog = $<HTMLDialogElement>('shareDialog');
+  $('shareClose').addEventListener('click', () => shareDialog.close());
+  shareDialog.addEventListener('click', (e) => { if (e.target === shareDialog) shareDialog.close(); });
+  shareDialog.querySelectorAll<HTMLButtonElement>('[data-share]').forEach((b) => b.addEventListener('click', () => { void shareTo(b.dataset.share!); }));
   const about = $<HTMLDialogElement>('about');
   $('aboutButton').addEventListener('click', () => about.showModal());
   $('aboutClose').addEventListener('click', () => about.close());
   about.addEventListener('click', (e) => { if (e.target === about) about.close(); });
-  document.addEventListener('keydown', (e) => { if (e.key === '?' && !about.open && document.activeElement !== $('url')) about.showModal(); });
+  document.addEventListener('keydown', (e) => { if (e.key === '?' && !about.open && !shareDialog.open && document.activeElement !== $('url')) about.showModal(); });
   $('url').focus();
 }
 

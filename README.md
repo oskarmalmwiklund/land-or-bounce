@@ -13,18 +13,25 @@ from there; see `THIRD_PARTY.md`.
 
 1. **The room.** A kitchen at night, one lamp, a bowl of fruit past its best, and eighteen
    fruit flies drawn to the light. The address field sits in the middle.
-2. **Capture.** `/api/capture` screenshots the top of the page at 1440×810 with a headless
-   Chromium and sends back a JPEG. Nothing else leaves the browser. A screenshot can be
-   dropped instead, for local pages or pages that will not let a bot in.
-3. **The show.** The screenshot becomes the fly's 320×180 screen. The eye adapts to the page's
+2. **Capture.** `/api/capture` screenshots the page at 1440×810 with a headless Chromium,
+   one viewport per fold, scrolling between shots, up to three folds (`&folds=`, max 4) and
+   sends back JPEGs. Nothing else leaves the browser. A screenshot can be dropped instead,
+   for local pages or pages that will not let a bot in.
+3. **The show.** The top fold becomes the fly's 320×180 screen. The eye adapts to the page's
    average brightness, looks at it for a second, then looks at a grey version weighted the
-   way a human sees brightness. The fly narrates every measurement as it lands; the glance
-   map paints the lamina columns that stand out. The flies in the room move to the screen.
-4. **The verdict.** A score out of 100, a LANDED or BOUNCED stamp, the fly sitting where it
-   would land on the page, and five parts with the numbers behind them. If it landed, the
-   flies settle on the frame. If it bounced, they leave.
-5. **Share.** A 1200×630 card (Web Share with the PNG attached, copy to clipboard, save, or
-   post links for X and LinkedIn) and a link, `?site=yoursite.com`, that re-runs the fly.
+   way a human sees brightness. Then it scrolls: each fold below gets the same one-second
+   look, the screen sliding down between them. The fly narrates every measurement as it
+   lands; the glance map paints the lamina columns that stand out. The flies in the room
+   move to the screen.
+4. **The verdict.** A score out of 100 for the top fold, a LANDED or BOUNCED stamp, the fly
+   sitting where it would land, five parts with the numbers behind them, and which fold moved
+   the eye most. A picker flips the screen between folds, each with its own glance map. If it
+   landed, the flies settle on the frame. If it bounced, they leave.
+5. **Share.** One button opens the card (1200×630) with the post text, which always ends with
+   a line back to the site. Buttons for X, LinkedIn, Bluesky and Facebook open the posting
+   site with the text prefilled and copy the card to the clipboard on the way, since intent
+   links cannot carry an image; plus native Web Share with the PNG attached, copy image, save
+   PNG and copy link. The link, `?site=yoursite.com`, re-runs the fly.
 
 ## How the score is built
 
@@ -38,6 +45,9 @@ weighted sum.
 | Calm | 20 | Share of columns that changed under 2.5 Hz: whitespace as the eye sees it | plateau at 30–70 %, gated by Notice |
 | Balance | 15 | Left eye's mean change over both eyes' | plateau at 44–56 %, gated by Notice |
 | Fly-safe colour | 15 | Glance at the real page over glance at its human-luminance grey twin | 0 at 0.7, 100 at 1.0 |
+
+The score is the top fold only, because that is what a landing page is judged on; the folds
+below are reported, not scored.
 
 Ranges from `npm run calibrate` on a dozen real pages, at the operating grey of 40: a flat
 frame gives 0.9 Hz of glance (the noise floor), text-heavy white pages 1.3–1.6 Hz, pages with

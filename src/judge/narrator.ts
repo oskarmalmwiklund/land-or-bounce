@@ -11,8 +11,13 @@ export interface Line { kind: 'step' | 'measure' | 'note' | 'verdict'; text: str
 const fmt = (x: number, d = 1) => x.toFixed(d);
 const pct = (x: number) => `${Math.round(x * 100)}%`;
 
+/** What the scroll found: one entry per fold, the first fold included. */
+export interface Scroll { glances: number[]; best: number; total: number }
+
 export class Narrator {
   readonly metrics: Partial<Record<Variant, Metrics>> = {};
+  /** metrics for the folds below the first, in order (fold 2 at index 0) */
+  readonly folds: Metrics[] = [];
   baselineHz = 0;
 
   constructor(readonly host: string) {}
@@ -29,12 +34,24 @@ export class Narrator {
           push('measure', `Resting. On grey my lamina fires at ${fmt(this.baselineHz)} Hz. Everything from here is a change from that.`);
         } else if (e.step === 'show') {
           if (e.variant === 'page') push('step', `Here goes. Adapting to how bright ${site} is, then looking at it for one second.`);
+          else if (e.variant === 'fold') push('step', e.fold === 2 ? `Now I scroll. Fold ${e.fold} of ${e.folds}, one screen down.` : `Further down. Fold ${e.fold} of ${e.folds}.`);
           else push('step', 'Now the page as a human sees brightness, in grey. I want to know what I am missing.');
         }
         break;
       case 'judge-measure': {
-        this.metrics[e.variant] = e.metrics;
         const m = e.metrics;
+        if (e.variant === 'fold') {
+          this.folds.push(m);
+          const page = this.metrics.page!;
+          const ratio = page.glance > 0 ? m.glance / page.glance : 1;
+          const where = m.landing ? (m.landing.u < 0.4 ? 'on the left' : m.landing.u > 0.6 ? 'on the right' : 'in the middle') : null;
+          push('measure', m.glance < 1.2 ? `Fold ${e.fold}: ${fmt(m.glance)} Hz. Nothing down here. A grey field.`
+            : ratio > 1.25 ? `Fold ${e.fold}: ${fmt(m.glance)} Hz. That is more than the top of your page did to me${where ? `, ${where}` : ''}. The good stuff is below the fold.`
+            : ratio < 0.6 ? `Fold ${e.fold}: ${fmt(m.glance)} Hz, well under the top of the page. It gets quieter down here.`
+            : `Fold ${e.fold}: ${fmt(m.glance)} Hz, about what the top did${where ? `, hottest ${where}` : ''}. It keeps going.`);
+          break;
+        }
+        this.metrics[e.variant] = e.metrics;
         if (e.variant === 'page') {
           push('measure', m.glance < 3 ? `That moved my first synapse by ${fmt(m.glance)} Hz per cell. Barely. Is it on?`
             : m.glance < 7 ? `That moved my first synapse by ${fmt(m.glance)} Hz per cell. I noticed.`
@@ -62,7 +79,8 @@ export class Narrator {
       }
       case 'judge-done': {
         const s = this.score();
-        if (s) push('verdict', `${s.total} out of 100. ${s.band.title} ${s.band.line}`);
+        const sc = this.scroll();
+        if (s) push('verdict', `${s.total} out of 100. ${s.band.title} ${s.band.line}` + (sc && sc.total > 1 ? (sc.best === 1 ? ' Everything worth landing on is above the fold.' : ` Fold ${sc.best} of ${sc.total} is where I would land, though; the top is not your best screen.`) : ''));
         push('note', 'I am 29,195 neurons of a fly’s eye and its first synapse. I cannot read, I have never heard of your brand, and I do not know what a button is. This is what your page does to an eye before anyone has thought about it.');
         break;
       }
@@ -76,4 +94,14 @@ export class Narrator {
   }
 
   score(): Score | null { return score(this.metrics); }
+
+  /** The folds compared by glance; null before the first fold is measured. */
+  scroll(): Scroll | null {
+    const page = this.metrics.page;
+    if (!page) return null;
+    const glances = [page.glance, ...this.folds.map((m) => m.glance)];
+    let best = 0;
+    for (let k = 1; k < glances.length; k++) if (glances[k] > glances[best] * 1.1) best = k;   // the top wins ties
+    return { glances, best: best + 1, total: glances.length };
+  }
 }

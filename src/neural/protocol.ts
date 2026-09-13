@@ -1,8 +1,9 @@
 import type { CircuitData, CircuitManifest } from './circuit';
 
-/** What the fly is shown, in order. Every variant is a full 320x180 RGBA frame. */
-export type Variant = 'page' | 'humangrey';
-export const VARIANTS: Variant[] = ['page', 'humangrey'];
+/** What the fly is shown, in order: the page, its human-grey twin, then the folds below,
+ *  one per scroll. Every variant is a full 320x180 RGBA frame. */
+export type Variant = 'page' | 'humangrey' | 'fold';
+export const VARIANTS: Exclude<Variant, 'fold'>[] = ['page', 'humangrey'];
 
 export interface Metrics {
   /** mean |Δ rate| over L1-L3 lamina cells vs grey, steady state (last half of the exposure), Hz */
@@ -38,7 +39,8 @@ export type WorkerCommand =
   | { type: 'settle'; settleMs: number; measureMs: number }
   | { type: 'frame'; rgba: ArrayBuffer | null }
   | { type: 'advance'; ms: number; budgetMs: number }
-  | { type: 'judge'; frame: ArrayBuffer; exposureMs: number }
+  /** `folds` are the viewports below the first, top to bottom, unadapted */
+  | { type: 'judge'; frame: ArrayBuffer; exposureMs: number; folds?: ArrayBuffer[] }
   | { type: 'judge-continue' }
   | { type: 'abort' };
 
@@ -54,14 +56,14 @@ export interface Snapshot {
   glance: Float32Array;
   glanceMeanHz: number;
   hasBaseline: boolean;
-  /** during judging: what is on the fly's screen right now */
-  showing?: { variant: Variant | 'grey' };
+  /** during judging: what is on the fly's screen right now; `fold` is 2-based for the folds below */
+  showing?: { variant: Variant | 'grey'; fold?: number };
 }
 
 export type JudgeEvent =
-  | { type: 'judge-step'; step: 'settle' | 'baseline' | 'show'; variant?: Variant; flyMs: number; baselineLaminaHz?: number }
-  | { type: 'judge-measure'; variant: Variant; metrics: Metrics; flyMs: number }
-  | { type: 'judge-heat'; heat: Heat }
+  | { type: 'judge-step'; step: 'settle' | 'baseline' | 'show'; variant?: Variant; fold?: number; folds?: number; flyMs: number; baselineLaminaHz?: number }
+  | { type: 'judge-measure'; variant: Variant; fold?: number; metrics: Metrics; flyMs: number }
+  | { type: 'judge-heat'; heat: Heat; fold?: number }
   | { type: 'judge-done'; flyMs: number; wallMs: number }
   | { type: 'judge-aborted' };
 

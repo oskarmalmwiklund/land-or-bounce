@@ -17,6 +17,8 @@ export interface CardInput {
   landing: { u: number; v: number } | null;
   /** where the card points people, e.g. landorbounce.com */
   appHost: string;
+  /** what the scroll found, when there was more than one fold */
+  scroll?: { best: number; total: number } | null;
 }
 
 const DISPLAY = '"Fraunces Variable", Georgia, serif';
@@ -83,6 +85,11 @@ export async function renderCard(input: CardInput): Promise<HTMLCanvasElement> {
   c.textBaseline = 'alphabetic'; c.textAlign = 'left';
   c.fillStyle = palette.creamMuted; c.font = `500 18px ${MONO}`;
   c.fillText(input.host.slice(0, 48), sx, sy + sh + 40);
+  if (input.scroll && input.scroll.total > 1) {
+    c.textAlign = 'right'; c.fillStyle = palette.creamFaint; c.font = `500 14px ${TEXT}`;
+    c.fillText(input.scroll.best === 1 ? `Scrolled ${input.scroll.total} folds. The top is the best one.` : `Scrolled ${input.scroll.total} folds. Fold ${input.scroll.best} is where it would land.`, sx + sw, sy + sh + 40);
+    c.textAlign = 'left';
+  }
   // wordmark
   c.fillStyle = palette.cream; c.font = `700 30px ${DISPLAY}`; setVariation(c, '"SOFT" 100, "WONK" 1');
   c.fillText('Land or Bounce', 48, 72);

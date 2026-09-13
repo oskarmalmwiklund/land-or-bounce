@@ -30,6 +30,10 @@ export class Screen {
   landing: { u: number; v: number } | null = null;
   showHeat = true;
   private landingBorn = 0;
+  /** A scroll in progress: the image that was on screen, sliding up. */
+  private prevImage: HTMLImageElement | null = null;
+  private scrollStart = 0;
+  private scrollDir = 1;
 
   constructor(readonly canvas: HTMLCanvasElement, readonly circuit: Circuit) {
     this.ctx = canvas.getContext('2d')!;
@@ -54,19 +58,22 @@ export class Screen {
 
   get hasSource(): boolean { return this.image !== null || this.override !== null; }
 
-  /** The page letterboxed onto the fly's 320x180 screen, for the photoreceptors. */
-  paintFlyScreen(): ImageData | null {
+  /** Any image letterboxed onto the fly's 320x180 screen, for the photoreceptors. */
+  frameOf(image: HTMLImageElement | null): ImageData | null {
     const c = this.flyCtx;
     const g = OPERATING_GREY;
     c.fillStyle = `rgb(${g},${g},${g})`;
     c.fillRect(0, 0, SCREEN_W, SCREEN_H);
-    if (!this.image || !this.image.naturalWidth) return null;
-    const fit = Math.min(SCREEN_W / this.image.naturalWidth, SCREEN_H / this.image.naturalHeight);
-    const w = this.image.naturalWidth * fit, h = this.image.naturalHeight * fit;
+    if (!image || !image.naturalWidth) return null;
+    const fit = Math.min(SCREEN_W / image.naturalWidth, SCREEN_H / image.naturalHeight);
+    const w = image.naturalWidth * fit, h = image.naturalHeight * fit;
     c.imageSmoothingEnabled = true; c.imageSmoothingQuality = 'high';
-    c.drawImage(this.image, (SCREEN_W - w) / 2, (SCREEN_H - h) / 2, w, h);
+    c.drawImage(image, (SCREEN_W - w) / 2, (SCREEN_H - h) / 2, w, h);
     return c.getImageData(0, 0, SCREEN_W, SCREEN_H);
   }
+
+  /** The current page on the fly's screen. */
+  paintFlyScreen(): ImageData | null { return this.frameOf(this.image); }
 
   /** Feed a new per-cell change-vs-grey estimate; the map keeps a smoothed copy. */
   setGlance(glance: Float32Array | null): void {
@@ -77,6 +84,20 @@ export class Screen {
   }
 
   resetGlance(): void { this.smooth = null; }
+
+  /** Slide to another fold of the same page: the old image leaves upward, the new one arrives from below. */
+  scrollTo(image: HTMLImageElement, dir = 1): void {
+    if (this.image && this.image !== image) { this.prevImage = this.image; this.scrollStart = performance.now(); this.scrollDir = dir; }
+    this.image = image;
+    this.override = null; this.overrideKind = 'page';
+    this.heat = null;
+  }
+
+  private drawImageAt(c: CanvasRenderingContext2D, img: HTMLImageElement, W: number, H: number, dy: number): void {
+    const fit = Math.min(W / img.naturalWidth, H / img.naturalHeight);
+    const w = img.naturalWidth * fit, h = img.naturalHeight * fit;
+    c.drawImage(img, (W - w) / 2, (H - h) / 2 + dy, w, h);
+  }
 
   setLanding(l: { u: number; v: number } | null): void {
     if (l && !this.landing) this.landingBorn = performance.now();
@@ -94,14 +115,17 @@ export class Screen {
       this.flyCtx.putImageData(this.override, 0, 0);
       c.drawImage(this.fly, 0, 0, W, H);
     } else if (this.image && this.image.naturalWidth) {
-      const fit = Math.min(W / this.image.naturalWidth, H / this.image.naturalHeight);
-      const w = this.image.naturalWidth * fit, h = this.image.naturalHeight * fit;
-      c.drawImage(this.image, (W - w) / 2, (H - h) / 2, w, h);
+      const t = this.prevImage ? Math.min(1, (now - this.scrollStart) / 650) : 1;
+      if (this.prevImage && t < 1) {
+        const e = 1 - (1 - t) ** 3;
+        this.drawImageAt(c, this.prevImage, W, H, -e * H * this.scrollDir);
+        this.drawImageAt(c, this.image, W, H, (1 - e) * H * this.scrollDir);
+      } else { this.prevImage = null; this.drawImageAt(c, this.image, W, H, 0); }
     } else if (this.override) {
       this.flyCtx.putImageData(this.override, 0, 0);
       c.drawImage(this.fly, 0, 0, W, H);
     }
-    if (this.showHeat && this.hasSource) {
+    if (this.showHeat && this.hasSource && !this.prevImage) {
       if (this.heat) drawHeat(c, this.heat.u, this.heat.v, this.heat.d, this.heat.d.length, rect, 0.9);
       else if (this.smooth) {
         for (let k = 0; k < this.laminaCells.length; k++) this.liveD[k] = this.smooth[this.laminaCells[k]];

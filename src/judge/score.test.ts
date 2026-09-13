@@ -1,6 +1,7 @@
 /** The score rules: blanks bounce, a clear hero on a quiet page lands, and the bands are in order. */
 import { describe, expect, it } from 'vitest';
 import type { Metrics } from '../neural/protocol';
+import { PAGE_BANDS } from '../../api/page';
 import { BANDS, WEIGHTS, score } from './score';
 
 function m(over: Partial<Metrics>): Metrics {
@@ -36,6 +37,9 @@ describe('score', () => {
   it('a page that leans on one eye loses balance', () => {
     const lean = m({ leftShare: 0.2 });
     expect(score({ page: lean, humangrey: lean })!.parts.find((p) => p.key === 'balance')!.score).toBe(0);
+  });
+  it('the page function carries the same bands', () => {
+    expect(PAGE_BANDS).toEqual(BANDS);
   });
   it('bands are contiguous and descending', () => {
     expect(BANDS[BANDS.length - 1].min).toBe(0);

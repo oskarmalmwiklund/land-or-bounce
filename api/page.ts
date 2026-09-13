@@ -8,7 +8,19 @@
  * about the page is unchanged: the script still reads `site` and re-runs the fly.
  */
 import type { IncomingMessage, ServerResponse } from 'node:http';
-import { BANDS } from '../src/judge/score';
+
+/**
+ * The score bands, copied from src/judge/score.ts: Vercel's function bundler does not resolve
+ * a .ts import from outside api/ at runtime. src/judge/score.test.ts checks the two agree.
+ */
+export const PAGE_BANDS: { min: number; title: string; line: string }[] = [
+  { min: 85, title: 'Landed. Laid eggs.', line: 'The fly is not leaving. Neither is anyone else.' },
+  { min: 70, title: 'Landed.', line: 'Clean approach, one clear place to sit. The fly stayed.' },
+  { min: 50, title: 'Landed, barely.', line: 'Touched down, looked around, is thinking about it.' },
+  { min: 35, title: 'Hovered. Left.', line: 'Circled twice, found nowhere to sit, went back to the lamp.' },
+  { min: 20, title: 'Bounced.', line: 'Hit the glass and kept going.' },
+  { min: 0, title: 'Bounced off the glass.', line: 'The fly did not notice there was a page.' },
+];
 
 let indexHtml: { at: number; html: string } | null = null;
 
@@ -48,7 +60,7 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
   try {
     let html = await loadIndex(origin);
     const image = q.get('card') ? await cardImage(q.get('card')!) : null;
-    const band = hasScore ? BANDS.find((b) => score >= b.min)! : null;
+    const band = hasScore ? PAGE_BANDS.find((b) => score >= b.min)! : null;
     const title = site && band ? `${site} scored ${score}/100 with a fruit fly’s eye. ${band.title}` : 'Land or Bounce — a fruit fly scores your landing page';
     const description = band ? `${band.line} 29,195 real neurons of a fruit fly’s eye looked at ${site}. Release the fly on your own landing page.` : 'Give a fruit fly your landing page. 29,195 real neurons of its eye look at it live in your browser and score it 0 to 100.';
     html = html.replace(/<title>[^<]*<\/title>/, `<title>${esc(title)}</title>`);

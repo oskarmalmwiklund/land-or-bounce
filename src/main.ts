@@ -235,7 +235,7 @@ async function judgeUrl(raw: string): Promise<void> {
     const host = hostOf(body.finalUrl || body.url);
     current = { host, url: body.finalUrl || body.url, folds };
     const q = new URLSearchParams(); q.set('site', host === hostOf(`https://${typed}`) ? typed : body.finalUrl); if (foldsWanted() !== DEFAULT_FOLDS) q.set('folds', String(foldsWanted()));
-    history.replaceState(null, '', `?${q}`);
+    history.replaceState(null, '', `/?${q}`);
     document.title = `${host} · Land or Bounce`;
     $('veilText').textContent = `Got ${folds.length === 1 ? 'it' : `${folds.length} folds`} in ${((performance.now() - t0) / 1000).toFixed(1)} s. Waking the eye…`;
     await startJudge();
@@ -258,7 +258,7 @@ async function judgeFile(file: File): Promise<void> {
     const image = await loadImage(url);
     const host = file.name.replace(/\.[a-z0-9]+$/i, '').slice(0, 40) || 'your screenshot';
     current = { host, url: null, folds: [image] };
-    history.replaceState(null, '', location.pathname);
+    history.replaceState(null, '', '/');
     document.title = `${host} · Land or Bounce`;
     await startJudge();
   } catch { showOops('I could not open that image.', 'PNG or JPEG, please.'); }
@@ -401,7 +401,8 @@ let storing: Promise<void> | null = null;
 const shareLink = () => {
   if (!current?.url) return location.origin;
   const q = new URLSearchParams({ site: current.host });
-  if (storedCard && lastScore) { q.set('card', storedCard); q.set('score', String(lastScore.total)); }
+  // with a stored card the link goes through /verdict, which serves the page with that card as its preview
+  if (storedCard && lastScore) { q.set('card', storedCard); q.set('score', String(lastScore.total)); return `${location.origin}/verdict?${q}`; }
   return `${location.origin}/?${q}`;
 };
 /** Put the card in the store (once per verdict) so a shared link previews it. Quietly does nothing offline. */
@@ -546,7 +547,7 @@ function goIdle(): void {
   screen.image = null;
   $('show').hidden = true;
   setState('idle');
-  history.replaceState(null, '', location.pathname);
+  history.replaceState(null, '', '/');
   document.title = 'Land or Bounce — a fruit fly scores your landing page';
   const input = $<HTMLInputElement>('url'); input.value = ''; input.focus();
 }

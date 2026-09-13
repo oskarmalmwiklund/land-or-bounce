@@ -1,5 +1,6 @@
 /**
- * GET /?site=example.com&card=<id>&score=72   (rewritten here by vercel.json)
+ * GET /verdict?site=example.com&card=<id>&score=72   (rewritten here by vercel.json; a path
+ * with no static file, since Vercel serves an existing file before it applies rewrites)
  *
  * The page itself is static, and link crawlers do not run scripts, so a shared verdict
  * needs its meta tags written on the server. This serves the built index.html with the
@@ -55,7 +56,7 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
     html = setMeta(html, 'property', 'og:description', description);
     html = setMeta(html, 'name', 'description', description);
     const canonical = new URLSearchParams(); if (site) canonical.set('site', site); if (q.get('card')) canonical.set('card', q.get('card')!); if (hasScore) canonical.set('score', String(score));
-    html = setMeta(html, 'property', 'og:url', `${origin}/?${canonical}`);
+    html = setMeta(html, 'property', 'og:url', `${origin}/verdict?${canonical}`);
     html = setMeta(html, 'property', 'og:image', image ?? `${origin}/og.png`);
     html = setMeta(html, 'property', 'og:image:width', '1200');
     html = setMeta(html, 'property', 'og:image:height', '630');

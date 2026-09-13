@@ -1,0 +1,478 @@
+import '@fontsource-variable/fraunces';
+import '@fontsource-variable/familjen-grotesk';
+import '@fontsource-variable/jetbrains-mono';
+import './styles.css';
+import { copyImage, download, renderCard, shareCard, type CardInput } from './judge/card';
+import { variantsOf } from './judge/measure';
+import { Narrator, type Line } from './judge/narrator';
+import type { Score } from './judge/score';
+import { loadCircuit, toData, SCREEN_H, SCREEN_W, type Circuit } from './neural/circuit';
+import type { Heat, Snapshot, Variant, WorkerCommand, WorkerEvent } from './neural/protocol';
+import { Room } from './render/Room';
+import { Screen } from './render/Screen';
+import { applyPalette } from './theme/palette';
+
+applyPalette(document.documentElement.style);
+
+const DT_MS = 0.1;
+const MAX_ADVANCE_MS = 40;
+const BUDGET_MS = 30;
+const EXPOSURE_MS = 1000;
+const LOOK_SPEED = 0.5;
+const APP_HOST = location.host.replace(/^www\./, '') || 'landorbounce.vercel.app';
+
+type State = 'waking' | 'idle' | 'capturing' | 'judging' | 'result' | 'error';
+
+const app = document.getElementById('app')!;
+app.innerHTML = `
+<canvas id="room" class="room" aria-hidden="true"></canvas>
+<div class="grain" aria-hidden="true"></div>
+<main class="page" id="page" data-state="waking">
+  <header class="top">
+    <a class="wordmark" href="/" aria-label="Land or Bounce home">Land <span>or</span> Bounce<i>.</i></a>
+    <nav class="top-nav">
+      <span class="live" id="live" title="The eye is running in a Web Worker in this tab"><i></i><b id="liveSpikes">0</b> spikes / 60 ms</span>
+      <button type="button" class="text-button" id="aboutButton">How it works</button>
+    </nav>
+  </header>
+
+  <section class="stage" id="stage">
+    <div class="hero" id="hero">
+      <p class="kicker" id="kicker">A fruit fly has opinions about your landing page</p>
+      <h1 id="title">Land <em>or</em> bounce<span class="dot">.</span></h1>
+      <p class="lead" id="lead">Paste your site. 29,195 real neurons of a fruit fly’s eye look at it, live in this tab, and score it 0 to 100. It cannot read. It has no red receptors. It knows what it likes.</p>
+      <form class="urlform" id="form" autocomplete="off">
+        <label class="sr-only" for="url">Your website</label>
+        <span class="proto" aria-hidden="true">https://</span>
+        <input id="url" name="url" type="text" inputmode="url" spellcheck="false" placeholder="yoursite.com" required>
+        <button type="submit" class="go" id="go"><span>Release the fly</span></button>
+      </form>
+      <p class="hero-foot" id="heroFoot"><label class="text-button" for="filePick">or drop a screenshot<input class="hidden-input" type="file" id="filePick" accept="image/*"></label><span class="sep">·</span>Only the address leaves your browser. The fly runs here.</p>
+    </div>
+
+    <div class="show" id="show" hidden>
+      <div class="screen-frame" id="screenFrame">
+        <canvas id="screen" aria-label="The screen the fly is looking at"></canvas>
+        <div class="veil" id="veil" hidden><i class="spinner"></i><span id="veilText">Flying to your site…</span></div>
+        <span class="variant-tag" id="variantTag" hidden></span>
+        <div class="stamp" id="stamp" hidden></div>
+        <div class="oops" id="oops" hidden>
+          <span class="who">The fly</span>
+          <p id="oopsText"></p>
+          <p class="hint" id="oopsHint"></p>
+          <div class="row"><label class="secondary-button" for="filePick2">Drop a screenshot<input class="hidden-input" type="file" id="filePick2" accept="image/*"></label><button type="button" class="secondary-button" id="oopsAgain">Try another address</button></div>
+        </div>
+      </div>
+      <div class="caption" id="caption"><span class="who">The fly</span><span class="text" id="captionText"></span></div>
+    </div>
+
+    <div class="result" id="result" hidden>
+      <div class="verdict">
+        <div class="score" aria-live="polite"><span class="num" id="scoreNum">0</span><span class="den">/100</span></div>
+        <div class="band"><h2 id="bandTitle"></h2><p id="bandLine"></p><p class="site" id="bandSite"></p></div>
+      </div>
+      <ol class="parts" id="parts"></ol>
+      <div class="share" id="share">
+        <button type="button" class="primary-button" id="shareButton">Share the card</button>
+        <button type="button" class="secondary-button" id="copyButton">Copy image</button>
+        <button type="button" class="secondary-button" id="saveButton">Save PNG</button>
+        <button type="button" class="secondary-button" id="linkButton">Copy link</button>
+        <a class="secondary-button" id="xButton" target="_blank" rel="noopener">Post on X</a>
+        <a class="secondary-button" id="liButton" target="_blank" rel="noopener">LinkedIn</a>
+      </div>
+      <div class="card-preview" id="cardPreview" hidden><img id="cardImg" alt="The share card"></div>
+      <details class="transcript" id="transcriptBox"><summary>Everything the fly said</summary><ol id="transcript"></ol></details>
+      <button type="button" class="text-button again" id="againButton">Try another page</button>
+    </div>
+  </section>
+
+  <footer class="foot">
+    <span>Retina and lamina of <a href="https://male-cns.janelia.org/" target="_blank" rel="noopener">MaleCNS v1.0</a> (CC BY 4.0), simulated at 0.1 ms in your browser. Model activity, not fly behaviour.</span>
+    <span class="mono" id="footFacts"></span>
+    <a href="https://github.com/oskarmalmwiklund/land-or-bounce" target="_blank" rel="noopener">Source</a>
+  </footer>
+</main>
+<dialog class="dialog" id="about">
+  <div class="dialog-body">
+    <button type="button" class="icon-button dialog-close" id="aboutClose" aria-label="Close">✕</button>
+    <h2>A fly’s eye, scoring your page</h2>
+    <p>Every neuron in the fly is a real cell from the male fruit fly connectome (MaleCNS v1.0): the photoreceptors that sample the screen, the lamina where fly vision makes its first decision, and the cells that feed back onto it. The wiring and synapse counts are the published ones. The dynamics are a simple integrate-and-fire model, the same one the whole-brain fly simulators use, running in a Web Worker in this tab.</p>
+    <div class="facts" id="facts"></div>
+    <h3>What happens</h3>
+    <p>We screenshot the top of your page at 1440×810 and shrink it to the fly’s 320×180 screen. The eye adapts to the page’s average brightness, the way real photoreceptors do, then looks for one second. Then it looks at the page in grey, weighted the way a human sees brightness, to find out what it is missing. Everything the fly says is a measurement that just happened.</p>
+    <h3>The five parts</h3>
+    <dl>
+      <dt>Notice <small>25</small></dt><dd>Mean change in firing of the L1–L3 lamina cells against a grey screen, in Hz per cell. Under about 1.2 Hz is a blank to this eye; dark pages with bright elements run past 10.</dd>
+      <dt>Landing spot <small>25</small></dt><dd>Whether a few columns light up much harder than the rest: one clear thing to sit on. Everything hot, or nothing hot, both score low. The fly on your page sits at the centre of the hottest columns.</dd>
+      <dt>Calm <small>20</small></dt><dd>The share of columns that barely changed: whitespace as the eye sees it. Best between a third and two thirds. All quiet is a blank, no quiet is noise.</dd>
+      <dt>Balance <small>15</small></dt><dd>The left eye sees the left 60 % of the screen and the right eye the right 60 %. Both should be working.</dd>
+      <dt>Fly-safe colour <small>15</small></dt><dd>The fly’s glance at the real page over its glance at a human-luminance grey version. R1–R6 weight the primaries about 3 % red, 42 % green, 55 % blue; anything that is red on your page is nearly dark to it.</dd>
+    </dl>
+    <h3>What it cannot tell you</h3>
+    <p>It cannot read. It has no memory of brands and no idea what a button is. In the full 166,700-neuron model the image signal stops at the lamina, so this page shows exactly the part that carries signal: pre-attentive salience at the first synapse, nothing deeper. Dark pages with bright elements are high contrast to this eye and score well on Notice; that is a property of the eye, not a design recommendation.</p>
+    <p>Built on <a href="https://github.com/oskarmalmwiklund/swat-or-buy" target="_blank" rel="noopener">Swat or Buy</a>, which judges ads the same way. Simulator lineage: Bananflugakompassen and Stonkfly (MIT).</p>
+  </div>
+</dialog>`;
+
+const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
+const page = $('page'), roomCanvas = $<HTMLCanvasElement>('room'), screenCanvas = $<HTMLCanvasElement>('screen'), screenFrame = $('screenFrame');
+
+let circuit: Circuit;
+let screen: Screen;
+let room: Room;
+let state: State = 'waking';
+let settled = false;
+let inFlight = false;
+let lastWall = performance.now();
+let narrator: Narrator | null = null;
+let variantFrames: Record<Variant, Uint8ClampedArray> | null = null;
+let heat: Heat | null = null;
+let typeQueue: Line[] = [];
+let typing = false;
+let transcript: Line[] = [];
+let current: { host: string; url: string | null; image: HTMLImageElement } | null = null;
+let lastScore: Score | null = null;
+let lastCard: CardInput | null = null;
+let cardCanvas: HTMLCanvasElement | null = null;
+
+const worker = new Worker(new URL('./neural/eye.worker.ts', import.meta.url), { type: 'module' });
+const send = (c: WorkerCommand, transfer: Transferable[] = []) => worker.postMessage(c, transfer);
+
+function setState(s: State): void { state = s; page.dataset.state = s; }
+function toast(text: string): void {
+  const el = document.createElement('div');
+  el.className = 'toast'; el.setAttribute('role', 'status'); el.textContent = text;
+  document.body.append(el);
+  requestAnimationFrame(() => el.classList.add('in'));
+  setTimeout(() => { el.classList.remove('in'); setTimeout(() => el.remove(), 400); }, 3200);
+}
+const escapeHtml = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!));
+const hostOf = (u: string) => { try { return new URL(u).host.replace(/^www\./, ''); } catch { return u; } };
+
+// ---- the show -----------------------------------------------------------------------------
+function resetShow(): void {
+  narrator = null; variantFrames = null; heat = null; typeQueue = []; transcript = []; typing = false;
+  lastScore = null; lastCard = null; cardCanvas = null;
+  screen.override = null; screen.overrideKind = null; screen.heat = null; screen.setLanding(null); screen.resetGlance();
+  $('stamp').hidden = true; $('stamp').className = 'stamp';
+  $('variantTag').hidden = true; $('oops').hidden = true; $('veil').hidden = true;
+  $('result').hidden = true; $('cardPreview').hidden = true; $('transcript').innerHTML = '';
+  $('captionText').textContent = ''; $('caption').classList.remove('on');
+  room.mood = 'idle';
+}
+
+function showOops(text: string, hint?: string): void {
+  setState('error');
+  $('veil').hidden = true;
+  $('oopsText').textContent = text;
+  $('oopsHint').textContent = hint ?? '';
+  $('oops').hidden = false;
+  room.mood = 'idle';
+}
+
+async function loadImage(src: string): Promise<HTMLImageElement> {
+  const img = new Image();
+  img.decoding = 'async';
+  img.src = src;
+  await img.decode();
+  return img;
+}
+
+/** Fetch a screenshot from the API and judge it. */
+async function judgeUrl(raw: string): Promise<void> {
+  if (state === 'capturing' || state === 'judging' || !settled) return;
+  const typed = raw.trim().replace(/^https?:\/\//i, '');
+  if (!typed) { $('url').focus(); return; }
+  resetShow();
+  setState('capturing');
+  $('show').hidden = false;
+  screen.image = null;
+  $('veilText').textContent = `Flying to ${typed.split('/')[0]}…`;
+  $('veil').hidden = false;
+  room.mood = 'judging';
+  const t0 = performance.now();
+  try {
+    const res = await fetch(`/api/capture?url=${encodeURIComponent(typed)}`);
+    const body = await res.json().catch(() => ({ error: 'The kitchen went quiet.' }));
+    if (!res.ok) { showOops(body.error ?? 'I could not get there.', body.hint ?? 'Drop a screenshot and I will judge that.'); return; }
+    if ((state as State) !== 'capturing') return;   // the visitor moved on while we were flying
+    const image = await loadImage(body.image);
+    const host = hostOf(body.finalUrl || body.url);
+    current = { host, url: body.finalUrl || body.url, image };
+    history.replaceState(null, '', `?site=${encodeURIComponent(host === hostOf(`https://${typed}`) ? typed : body.finalUrl)}`);
+    document.title = `${host} · Land or Bounce`;
+    $('veilText').textContent = `Got it in ${((performance.now() - t0) / 1000).toFixed(1)} s. Waking the eye…`;
+    await startJudge();
+  } catch (err) {
+    showOops('Something in the kitchen went wrong.', err instanceof Error ? err.message : 'Try again, or drop a screenshot.');
+  }
+}
+
+async function judgeFile(file: File): Promise<void> {
+  if (!file.type.startsWith('image/')) { toast('That is not an image.'); return; }
+  if (state === 'capturing' || state === 'judging' || !settled) return;
+  resetShow();
+  setState('capturing');
+  $('show').hidden = false;
+  $('veilText').textContent = 'Unwrapping the screenshot…';
+  $('veil').hidden = false;
+  room.mood = 'judging';
+  try {
+    const url = URL.createObjectURL(file);
+    const image = await loadImage(url);
+    const host = file.name.replace(/\.[a-z0-9]+$/i, '').slice(0, 40) || 'your screenshot';
+    current = { host, url: null, image };
+    history.replaceState(null, '', location.pathname);
+    document.title = `${host} · Land or Bounce`;
+    await startJudge();
+  } catch { showOops('I could not open that image.', 'PNG or JPEG, please.'); }
+}
+
+async function startJudge(): Promise<void> {
+  if (!current) return;
+  screen.image = current.image;
+  screen.override = null; screen.overrideKind = 'page';
+  const frame = screen.paintFlyScreen();
+  if (!frame) { showOops('The screenshot came out empty.'); return; }
+  variantFrames = variantsOf(frame.data);
+  narrator = new Narrator(current.host);
+  setState('judging');
+  $('veil').hidden = true;
+  $('caption').classList.add('on');
+  inFlight = true;    // the worker owns the clock until judge-done
+  const buf = frame.data.slice().buffer;
+  send({ type: 'judge', frame: buf, exposureMs: EXPOSURE_MS }, [buf]);
+}
+
+function endJudge(): void {
+  inFlight = false;
+  if (state === 'judging') setState(lastScore ? 'result' : 'idle');
+}
+
+// ---- narration --------------------------------------------------------------------------
+const VARIANT_TAG: Record<Variant | 'grey', string> = { grey: 'grey screen', page: 'your page, adapted', humangrey: 'human brightness, in grey' };
+
+function stageFor(variant: Variant | 'grey'): void {
+  const tag = $('variantTag');
+  tag.hidden = false;
+  tag.textContent = VARIANT_TAG[variant];
+  if (variant === 'page') { screen.image = current?.image ?? null; screen.override = null; screen.overrideKind = 'page'; }
+  else if (variant === 'grey') { screen.override = null; screen.overrideKind = 'grey'; screen.image = null; }
+  else { screen.image = current?.image ?? null; screen.override = variantFrames ? new ImageData(variantFrames[variant].slice(), SCREEN_W, SCREEN_H) : null; screen.overrideKind = variant; }
+  screen.resetGlance();
+}
+
+function enqueue(lines: Line[]): void {
+  typeQueue.push(...lines);
+  if (!typing) void drain();
+}
+
+const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+
+async function drain(): Promise<void> {
+  typing = true;
+  const cap = $('captionText');
+  let lastKind: Line['kind'] | null = null;
+  while (typeQueue.length) {
+    const line = typeQueue.shift()!;
+    lastKind = line.kind;
+    transcript.push(line);
+    const li = document.createElement('li'); li.className = line.kind; li.textContent = line.text; $('transcript').append(li);
+    if (line.kind === 'verdict') { showResult(); }
+    cap.textContent = '';
+    cap.parentElement!.dataset.kind = line.kind;
+    const perChar = Math.min(16, 1400 / Math.max(20, line.text.length));
+    for (let i = 0; i < line.text.length; i++) {
+      cap.textContent += line.text[i];
+      if (line.text[i] === ' ' || i % 2) await sleep(perChar);
+      if (state !== 'judging' && state !== 'result') { typeQueue = []; break; }
+    }
+    await sleep(line.kind === 'measure' ? 900 : line.kind === 'verdict' ? 1600 : 500);
+  }
+  typing = false;
+  // The worker only waits after a measurement, so only a drained measurement releases it.
+  if (state === 'judging' && lastKind === 'measure') send({ type: 'judge-continue' });
+}
+
+// ---- the result ---------------------------------------------------------------------------
+function showResult(): void {
+  if (!narrator || !current) return;
+  const s = narrator.score();
+  if (!s) return;
+  lastScore = s;
+  setState('result');
+  inFlight = false;
+  const pageMetrics = narrator.metrics.page!;
+  screen.image = current.image; screen.override = null; screen.overrideKind = 'page';
+  screen.heat = heat;
+  const landing = pageMetrics.landing ? { u: pageMetrics.landing.u, v: pageMetrics.landing.v } : null;
+  screen.setLanding(landing);
+  $('variantTag').hidden = true;
+  room.mood = s.landed ? 'landed' : 'bounced';
+  // the stamp
+  const stamp = $('stamp');
+  stamp.textContent = s.landed ? 'LANDED' : 'BOUNCED';
+  stamp.className = `stamp ${s.landed ? 'landed' : 'bounced'}`;
+  stamp.hidden = false;
+  requestAnimationFrame(() => stamp.classList.add('in'));
+  // the score
+  $('result').hidden = false;
+  $('bandTitle').textContent = s.band.title;
+  $('bandLine').textContent = s.band.line;
+  $('bandSite').textContent = current.host;
+  const num = $('scoreNum');
+  const t0 = performance.now();
+  const count = () => {
+    const k = Math.min(1, (performance.now() - t0) / 1400);
+    num.textContent = String(Math.round(s.total * (1 - (1 - k) ** 3)));
+    if (k < 1) requestAnimationFrame(count);
+  };
+  count();
+  $('parts').innerHTML = s.parts.map((p, i) => `<li style="--d:${i * 90}ms"><div class="head"><b>${p.label}</b><span class="q">${p.question}</span></div><div class="bar"><i style="width:${p.score}%" class="${p.score >= 50 ? 'good' : 'bad'}"></i></div><div class="nums"><span class="mono val">${escapeHtml(p.value)}</span><span class="mono pts">${p.score}<small>/100 · ×${p.weight}</small></span></div></li>`).join('');
+  lastCard = { image: current.image, host: current.host, score: s, heat, landing, appHost: APP_HOST };
+  cardCanvas = null;
+  const shareUrl = current.url ? `${location.origin}/?site=${encodeURIComponent(current.host)}` : location.origin;
+  const text = `${current.host} scored ${s.total}/100 with a fruit fly’s eye. ${s.band.title} Land or Bounce:`;
+  $<HTMLAnchorElement>('xButton').href = `https://x.com/intent/post?text=${encodeURIComponent(text)}&url=${encodeURIComponent(shareUrl)}`;
+  $<HTMLAnchorElement>('liButton').href = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(shareUrl)}`;
+  void makeCard().then((cv) => { if (cv) { $<HTMLImageElement>('cardImg').src = cv.toDataURL('image/png'); $('cardPreview').hidden = false; } });
+  setTimeout(() => $('result').scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 600);
+}
+
+async function makeCard(): Promise<HTMLCanvasElement | null> {
+  if (!lastCard) return null;
+  if (!cardCanvas) cardCanvas = await renderCard(lastCard);
+  return cardCanvas;
+}
+const cardName = () => `land-or-bounce-${(current?.host ?? 'page').replace(/[^a-z0-9]+/gi, '-').toLowerCase()}-${lastScore?.total ?? 0}.png`;
+const shareText = () => current && lastScore ? `${current.host} scored ${lastScore.total}/100 with a fruit fly’s eye. ${lastScore.band.title}` : 'Land or Bounce';
+const shareLink = () => current?.url ? `${location.origin}/?site=${encodeURIComponent(current.host)}` : location.origin;
+
+// ---- main loop ----------------------------------------------------------------------------
+let recentSpikes = 0, spikeShown = 0, lastSpikeDraw = 0;
+function tick(): void {
+  requestAnimationFrame(tick);
+  const now = performance.now();
+  const wallDt = Math.min(100, now - lastWall);
+  lastWall = now;
+  room.screen = state === 'idle' || state === 'waking' ? null : (() => { const r = screenFrame.getBoundingClientRect(); return { x: r.left, y: r.top, w: r.width, h: r.height }; })();
+  room.render(now);
+  if (!settled) return;
+  if ($('show').hidden === false) screen.render(now);
+  if (state === 'judging' || inFlight) return;
+  // look mode: the eye keeps looking at whatever is on the screen, at half speed
+  const image = state === 'result' ? screen.paintFlyScreen() : null;
+  const flyMs = Math.max(10, Math.min(MAX_ADVANCE_MS, Math.round((wallDt * LOOK_SPEED) / 10) * 10));
+  inFlight = true;
+  if (image && variantFrames) { const copy = variantFrames.page.slice().buffer; send({ type: 'frame', rgba: copy }, [copy]); }
+  else send({ type: 'frame', rgba: null });
+  send({ type: 'advance', ms: flyMs, budgetMs: BUDGET_MS });
+}
+
+function onSnapshot(snap: Snapshot): void {
+  if (state !== 'judging') inFlight = false;
+  if (state === 'judging') screen.setGlance(snap.glance);
+  if (snap.showing && state === 'judging') {
+    const v = snap.showing.variant;
+    if (screen.overrideKind !== v) stageFor(v);
+  }
+  recentSpikes = recentSpikes * Math.exp(-snap.advancedMs / 60) + snap.spikes;
+  const now = performance.now();
+  spikeShown += (recentSpikes - spikeShown) * 0.2;
+  if (now - lastSpikeDraw > 160) { lastSpikeDraw = now; $('liveSpikes').textContent = Math.round(spikeShown).toLocaleString('en-US'); }
+}
+
+worker.onmessage = (e: MessageEvent<WorkerEvent>) => {
+  const msg = e.data;
+  switch (msg.type) {
+    case 'ready':
+      send({ type: 'settle', settleMs: 500, measureMs: 500 });
+      break;
+    case 'settled':
+      settled = true;
+      if (state === 'waking') setState('idle');
+      $('go').classList.add('ready');
+      void acceptQuery();
+      break;
+    case 'snapshot': onSnapshot(msg); break;
+    case 'judge-step': case 'judge-measure':
+      if (narrator) enqueue(narrator.lines(msg));
+      break;
+    case 'judge-heat': heat = msg.heat; break;
+    case 'judge-done':
+      if (narrator) enqueue(narrator.lines(msg));
+      inFlight = false;
+      break;
+    case 'judge-aborted':
+      if (narrator) enqueue(narrator.lines(msg));
+      endJudge();
+      break;
+    case 'error': toast(`Eye error: ${msg.message}`); inFlight = false; break;
+  }
+};
+
+// ---- boot ---------------------------------------------------------------------------------
+let queryDone = false;
+async function acceptQuery(): Promise<void> {
+  if (queryDone) return;
+  queryDone = true;
+  const u = new URLSearchParams(location.search).get('site');
+  if (u) { $<HTMLInputElement>('url').value = u; void judgeUrl(u); }
+}
+
+function goIdle(): void {
+  if (state === 'judging' || state === 'capturing') send({ type: 'abort' });
+  resetShow();
+  current = null;
+  screen.image = null;
+  $('show').hidden = true;
+  setState('idle');
+  history.replaceState(null, '', location.pathname);
+  document.title = 'Land or Bounce — a fruit fly scores your landing page';
+  const input = $<HTMLInputElement>('url'); input.value = ''; input.focus();
+}
+
+async function boot(): Promise<void> {
+  room = new Room(roomCanvas);
+  const fitRoom = () => room.resize(window.innerWidth, window.innerHeight);
+  window.addEventListener('resize', fitRoom); fitRoom();
+  requestAnimationFrame(tick);
+  try { circuit = await loadCircuit(); }
+  catch (err) { toast(`Could not load the circuit: ${err instanceof Error ? err.message : err}`); return; }
+  screen = new Screen(screenCanvas, circuit);
+  new ResizeObserver(() => screen.resize(screenFrame.clientWidth, screenFrame.clientHeight)).observe(screenFrame);
+  const m = circuit.manifest;
+  $('footFacts').textContent = `${m.neurons.toLocaleString('en-US')} neurons · ${m.edges.toLocaleString('en-US')} connections`;
+  $('facts').innerHTML = `<span><b>${m.neurons.toLocaleString('en-US')}</b>real neurons</span><span><b>${m.edges.toLocaleString('en-US')}</b>connections</span><span><b>${(m.synaptic_contacts / 1e6).toFixed(2)} M</b>synaptic contacts</span><span><b>${m.types.length}</b>cell types</span><span><b>${DT_MS} ms</b>timestep</span>`;
+  send({ type: 'init', circuit: toData(circuit), dtMs: DT_MS });
+
+  $('form').addEventListener('submit', (e) => { e.preventDefault(); void judgeUrl($<HTMLInputElement>('url').value); });
+  for (const id of ['filePick', 'filePick2']) $<HTMLInputElement>(id).addEventListener('change', (e) => { const t = e.target as HTMLInputElement; if (t.files?.[0]) void judgeFile(t.files[0]); t.value = ''; });
+  ['dragenter', 'dragover'].forEach((ev) => document.addEventListener(ev, (e) => { e.preventDefault(); page.classList.add('is-over'); }));
+  ['dragleave', 'drop'].forEach((ev) => document.addEventListener(ev, (e) => { e.preventDefault(); page.classList.remove('is-over'); }));
+  document.addEventListener('drop', (e) => { const f = e.dataTransfer?.files?.[0]; if (f) void judgeFile(f); });
+  document.addEventListener('paste', (e) => {
+    const f = e.clipboardData?.files?.[0];
+    if (f) { void judgeFile(f); return; }
+    const text = e.clipboardData?.getData('text')?.trim();
+    if (text && /^(https?:\/\/)?[a-z0-9-]+(\.[a-z0-9-]+)+/i.test(text) && document.activeElement !== $('url') && state === 'idle') { $<HTMLInputElement>('url').value = text; void judgeUrl(text); }
+  });
+  $('againButton').addEventListener('click', goIdle);
+  $('oopsAgain').addEventListener('click', goIdle);
+  $('shareButton').addEventListener('click', async () => {
+    const cv = await makeCard(); if (!cv) return;
+    const r = await shareCard(cv, shareText(), shareLink(), cardName());
+    if (r === 'unsupported') { const ok = await copyImage(cv); toast(ok ? 'Card copied. Paste it anywhere.' : 'Sharing is not available here. Saved the PNG instead.'); if (!ok) void download(cv, cardName()); }
+  });
+  $('copyButton').addEventListener('click', async () => { const cv = await makeCard(); if (!cv) return; const ok = await copyImage(cv); toast(ok ? 'Card copied. Paste it anywhere.' : 'Could not copy here. Saving instead.'); if (!ok) void download(cv, cardName()); });
+  $('saveButton').addEventListener('click', async () => { const cv = await makeCard(); if (cv) void download(cv, cardName()); });
+  $('linkButton').addEventListener('click', async () => { try { await navigator.clipboard.writeText(shareLink()); toast('Link copied. It re-runs the fly on that page.'); } catch { toast(shareLink()); } });
+  const about = $<HTMLDialogElement>('about');
+  $('aboutButton').addEventListener('click', () => about.showModal());
+  $('aboutClose').addEventListener('click', () => about.close());
+  about.addEventListener('click', (e) => { if (e.target === about) about.close(); });
+  document.addEventListener('keydown', (e) => { if (e.key === '?' && !about.open && document.activeElement !== $('url')) about.showModal(); });
+  $('url').focus();
+}
+
+void boot();

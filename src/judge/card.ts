@@ -152,13 +152,22 @@ export async function download(canvas: HTMLCanvasElement, filename: string): Pro
   setTimeout(() => URL.revokeObjectURL(url), 5000);
 }
 
-export async function copyImage(canvas: HTMLCanvasElement): Promise<boolean> {
+/** A JPEG of the card, small enough to store and to send as a link preview. */
+export function toJpeg(canvas: HTMLCanvasElement, quality = 0.86): Promise<Blob> {
+  return new Promise((res, rej) => canvas.toBlob((b) => (b ? res(b) : rej(new Error('no blob'))), 'image/jpeg', quality));
+}
+
+/**
+ * Copy the card to the clipboard. The write is started synchronously, with the PNG as a
+ * promise inside the ClipboardItem, so it still counts as part of the click even though
+ * encoding takes a moment; an await before the write would lose the gesture (and the
+ * document's focus, once a posting site opens in a new tab).
+ */
+export function copyImage(canvas: HTMLCanvasElement): Promise<boolean> {
   try {
-    if (!('ClipboardItem' in window) || !navigator.clipboard?.write) return false;
-    const blob = await toBlob(canvas);
-    await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
-    return true;
-  } catch { return false; }
+    if (!('ClipboardItem' in window) || !navigator.clipboard?.write) return Promise.resolve(false);
+    return navigator.clipboard.write([new ClipboardItem({ 'image/png': toBlob(canvas) })]).then(() => true, () => false);
+  } catch { return Promise.resolve(false); }
 }
 
 /** Web Share with the PNG attached where the platform allows it. */

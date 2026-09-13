@@ -192,6 +192,8 @@ button, input { font: inherit; color: inherit; }
 .share-opt.quiet:hover { background: #221913; }
 .share-opt.quiet:active { box-shadow: 0 1px 0 var(--ground-deep), inset 0 0 0 1px var(--line); }
 .share-opt.quiet svg { width: 22px; height: 22px; }
+.share-opt:disabled { opacity: 0.45; cursor: progress; transform: none; box-shadow: none; }
+.share-dialog.preparing .share-sub::after { content: ' Storing the card for the link preview…'; color: var(--lamp); }
 .share-note { margin: 16px 0 0 !important; font-size: 13px; color: var(--cream-faint) !important; }
 @media (max-width: 560px) { .share-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .share-dialog .dialog-body { padding: 22px 18px; } }
 

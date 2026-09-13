@@ -37,7 +37,7 @@ async function cardImage(id: string): Promise<string | null> {
   if (!/^[a-f0-9]{24}$/.test(id) || !process.env.BLOB_READ_WRITE_TOKEN) return null;
   try {
     const { list } = await import('@vercel/blob');
-    const { blobs } = await list({ prefix: `cards/${id}.png`, limit: 1 });
+    const { blobs } = await list({ prefix: `cards/${id}.`, limit: 1 });
     return blobs[0]?.url ?? null;
   } catch { return null; }
 }

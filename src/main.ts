@@ -2,7 +2,7 @@ import '@fontsource-variable/fraunces';
 import '@fontsource-variable/familjen-grotesk';
 import '@fontsource-variable/jetbrains-mono';
 import './styles.css';
-import { copyImage, download, renderCard, shareCard, toBlob, type CardInput } from './judge/card';
+import { copyImage, download, renderCard, shareCard, toJpeg, type CardInput } from './judge/card';
 import { variantsOf } from './judge/measure';
 import { Narrator, type Line } from './judge/narrator';
 import type { Score } from './judge/score';
@@ -117,7 +117,7 @@ app.innerHTML = `
       <button type="button" class="share-opt quiet" data-share="save">${ICON.save}<span>Save PNG</span></button>
       <button type="button" class="share-opt quiet" data-share="link">${ICON.link}<span>Copy link</span></button>
     </div>
-    <p class="share-note">Posting sites do not take images from a link, so the card is copied to your clipboard on the way out. Paste it into the post.</p>
+    <p class="share-note" id="shareNote">The link previews your card wherever it is posted. It is also copied to your clipboard on the way out, in case you would rather paste the picture itself.</p>
   </div>
 </dialog>
 
@@ -410,9 +410,9 @@ function storeCard(cv: HTMLCanvasElement): Promise<void> {
   if (storedCard || !current?.url) return Promise.resolve();
   storing ??= (async () => {
     try {
-      const blob = await toBlob(cv);
-      if (blob.size > 1_400_000) return;
-      const res = await fetch('/api/card', { method: 'POST', headers: { 'Content-Type': 'image/png' }, body: blob });
+      const blob = await toJpeg(cv);
+      if (blob.size > 2_400_000) return;
+      const res = await fetch('/api/card', { method: 'POST', headers: { 'Content-Type': 'image/jpeg' }, body: blob });
       if (res.ok) { const { id } = await res.json(); if (typeof id === 'string') storedCard = id; }
     } catch { /* the link still works, it just previews the house image */ }
   })();
@@ -432,39 +432,51 @@ async function openShare(): Promise<void> {
   $<HTMLImageElement>('cardImg').src = cv.toDataURL('image/png');
   $('postText').textContent = postText(true);
   $('nativeShare').hidden = !navigator.share;
-  $<HTMLDialogElement>('shareDialog').showModal();
-  // store the card so the link previews it; the post text picks up the id when it lands
-  void storeCard(cv).then(() => { if ($<HTMLDialogElement>('shareDialog').open) $('postText').textContent = postText(true); });
+  const dialog = $<HTMLDialogElement>('shareDialog');
+  dialog.showModal();
+  // store the card so the link previews it; the posting buttons wait for the id so their
+  // click stays a plain, synchronous gesture (no awaits before window.open or the clipboard)
+  const posting = dialog.querySelectorAll<HTMLButtonElement>('.share-opt:not(.quiet)');
+  if (!storedCard && current?.url) {
+    posting.forEach((b) => { b.disabled = true; });
+    dialog.classList.add('preparing');
+    void storeCard(cv).finally(() => { posting.forEach((b) => { b.disabled = false; }); dialog.classList.remove('preparing'); if (dialog.open) $('postText').textContent = postText(true); });
+  }
 }
 
-/** Copy the card, then open the posting site with the text. */
-async function shareTo(where: string): Promise<void> {
-  const cv = await makeCard();
+/**
+ * Open the posting site with the text. The card is already rendered when the dialog is
+ * open, so nothing here awaits before the clipboard write or window.open: both need the
+ * click. LinkedIn takes the link as `shareUrl`, so its attached preview is our card and
+ * not whatever domain appears first in the text.
+ */
+function shareTo(where: string): void {
+  const cv = cardCanvas;
   if (!cv) return;
-  await storeCard(cv);
   const link = shareLink();
   const intents: Record<string, string> = {
     x: `https://x.com/intent/post?text=${encodeURIComponent(postText(false))}&url=${encodeURIComponent(link)}`,
-    linkedin: `https://www.linkedin.com/feed/?shareActive=true&text=${encodeURIComponent(postText(true))}`,
+    linkedin: `https://www.linkedin.com/feed/?shareActive=true&shareUrl=${encodeURIComponent(link)}&text=${encodeURIComponent(postText(false))}`,
     bluesky: `https://bsky.app/intent/compose?text=${encodeURIComponent(postText(true))}`,
     facebook: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(link)}`,
   };
   switch (where) {
-    case 'native': {
-      const r = await shareCard(cv, postText(false), link, cardName());
-      if (r === 'unsupported') toast('Sharing is not available here. Pick a site below.');
+    case 'native':
+      void shareCard(cv, postText(false), link, cardName()).then((r) => { if (r === 'unsupported') toast('Sharing is not available here. Pick a site below.'); });
       return;
-    }
-    case 'copy': { const ok = await copyImage(cv); toast(ok ? 'Card copied. Paste it anywhere.' : 'Could not copy here. Saving instead.'); if (!ok) void download(cv, cardName()); return; }
+    case 'copy':
+      void copyImage(cv).then((ok) => { toast(ok ? 'Card copied. Paste it anywhere.' : 'Could not copy here. Saving instead.'); if (!ok) void download(cv, cardName()); });
+      return;
     case 'save': void download(cv, cardName()); return;
-    case 'link': { try { await navigator.clipboard.writeText(link); toast('Link copied. It re-runs the fly on that page.'); } catch { toast(link); } return; }
+    case 'link': navigator.clipboard.writeText(link).then(() => toast('Link copied. It previews your card.'), () => toast(link)); return;
   }
   if (!intents[where]) return;
-  // a posting site: open the window first, while the click still counts as a gesture, then copy the card
+  // start the copy first (it needs the document focused), then open the site in the same tick
+  const copying = copyImage(cv);
   const win = window.open(intents[where], '_blank', 'noopener');
-  const ok = await copyImage(cv);
-  if (!ok) void download(cv, cardName());
-  toast(ok ? 'Card copied. Paste it into your post.' : 'Card saved. Attach it to your post.');
+  void copying.then((ok) => toast(storedCard
+    ? (ok ? 'The link previews your card. It is on your clipboard too, if you would rather paste it.' : 'The link previews your card.')
+    : (ok ? 'Card copied. Paste it into your post.' : 'Could not copy the card here. Use Save PNG and attach it.')));
   if (!win) toast('Your browser blocked the pop-up. Allow it and try again.');
 }
 
@@ -583,7 +595,7 @@ async function boot(): Promise<void> {
   const shareDialog = $<HTMLDialogElement>('shareDialog');
   $('shareClose').addEventListener('click', () => shareDialog.close());
   shareDialog.addEventListener('click', (e) => { if (e.target === shareDialog) shareDialog.close(); });
-  shareDialog.querySelectorAll<HTMLButtonElement>('[data-share]').forEach((b) => b.addEventListener('click', () => { void shareTo(b.dataset.share!); }));
+  shareDialog.querySelectorAll<HTMLButtonElement>('[data-share]').forEach((b) => b.addEventListener('click', () => shareTo(b.dataset.share!)));
   const about = $<HTMLDialogElement>('about');
   $('aboutButton').addEventListener('click', () => about.showModal());
   $('aboutClose').addEventListener('click', () => about.close());

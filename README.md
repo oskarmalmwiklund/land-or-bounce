@@ -32,12 +32,15 @@ from there; see `THIRD_PARTY.md`.
    site with the text prefilled and copy the card to the clipboard on the way, since intent
    links cannot carry an image; plus native Web Share with the PNG attached, copy image, save
    PNG and copy link. The link, `?site=yoursite.com`, re-runs the fly.
-6. **Link previews.** Opening the share dialog stores the card in Vercel Blob (`/api/card`,
-   PNG only, 1.5 MB cap) and the link becomes `/verdict?site=…&card=<id>&score=…`. A rewrite
+6. **Link previews.** Opening the share dialog stores the card as a JPEG in Vercel Blob
+   (`/api/card`, JPEG or PNG, 2.5 MB cap) and the link becomes `/verdict?site=…&card=<id>&score=…`. A rewrite
    sends `/verdict` to `/api/page`, which serves the built page with that card as its
    `og:image` and the verdict as its title, so the preview on X, LinkedIn, Slack and the
-   rest is the actual card. Plain links get the house preview, `public/og.png`, rendered
-   from `scripts/og.html`.
+   rest is the actual card. LinkedIn gets the link as `shareUrl` so its attached preview is
+   the card, not the first domain mentioned in the text. The card is also copied to the
+   clipboard as a posting site opens, started synchronously inside the click so the
+   browser allows it. Plain links get the house preview, `public/og.png`, rendered from
+   `scripts/og.html`.
 
 ## How the score is built
 

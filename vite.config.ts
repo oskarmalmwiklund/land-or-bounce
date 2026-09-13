@@ -1,4 +1,14 @@
+import { existsSync, readFileSync } from 'node:fs';
 import { defineConfig, type Plugin } from 'vitest/config';
+
+/** `vercel env pull` writes .env.local; the API handlers read process.env like they do on Vercel. */
+for (const f of ['.env.local', '.env']) {
+  if (!existsSync(f)) continue;
+  for (const line of readFileSync(f, 'utf8').split('\n')) {
+    const m = /^\s*([A-Z0-9_]+)\s*=\s*"?([^"\n]*)"?\s*$/.exec(line);
+    if (m && !(m[1] in process.env)) process.env[m[1]] = m[2];
+  }
+}
 
 /** Serve /api/* from the same handlers Vercel runs, so `npm run dev` captures pages with local Chrome. */
 function apiDev(): Plugin {

@@ -32,6 +32,12 @@ from there; see `THIRD_PARTY.md`.
    site with the text prefilled and copy the card to the clipboard on the way, since intent
    links cannot carry an image; plus native Web Share with the PNG attached, copy image, save
    PNG and copy link. The link, `?site=yoursite.com`, re-runs the fly.
+6. **Link previews.** Opening the share dialog stores the card in Vercel Blob (`/api/card`,
+   PNG only, 1.5 MB cap) and the link becomes `?site=…&card=<id>&score=…`. A rewrite sends
+   links with a `card` to `/api/page`, which serves the built page with that card as its
+   `og:image` and the verdict as its title, so the preview on X, LinkedIn, Slack and the
+   rest is the actual card. Plain links get the house preview, `public/og.png`, rendered
+   from `scripts/og.html`.
 
 ## How the score is built
 
@@ -90,7 +96,9 @@ node scripts/shot.mjs "http://127.0.0.1:5173/?site=stripe.com" scratch/shot 8000
 ## Deploy
 
 Vercel: import the repository, framework Vite. `api/capture.ts` runs as a Node function with
-`@sparticuz/chromium` (2 GB, 60 s, set in `vercel.json`). Everything else is static.
+`@sparticuz/chromium` (60 s, set in `vercel.json`). Card previews need a Vercel Blob store
+connected to the project (`BLOB_READ_WRITE_TOKEN`); without one, sharing still works and links
+preview the house image. `vercel env pull .env.local` gives local dev the same token.
 The capture endpoint refuses private, loopback and link-local hosts before and after redirects
 and caches a capture for fifteen minutes.
 
@@ -98,6 +106,8 @@ and caches a capture for fifteen minutes.
 
 ```
 api/capture.ts            headless screenshot endpoint (Vercel function, also Vite dev middleware)
+api/card.ts               stores a verdict card in Vercel Blob for link previews
+api/page.ts               serves the page with a shared verdict's meta tags
 src/neural/EyeBrain.ts    the kernel (from Swat or Buy), validated by EyeBrain.test.ts
 src/neural/eye.worker.ts  look mode and the judging protocol
 src/judge/measure.ts      adaptation, metrics, the human-grey twin

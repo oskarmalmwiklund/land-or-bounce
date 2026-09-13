@@ -4,8 +4,11 @@
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "functions": {
-    "api/capture.ts": { "memory": 2048, "maxDuration": 60 }
+    "api/capture.ts": { "maxDuration": 60 }
   },
+  "rewrites": [
+    { "source": "/", "has": [{ "type": "query", "key": "card" }], "destination": "/api/page" }
+  ],
   "headers": [
     { "source": "/data/(.*)", "headers": [{ "key": "Cache-Control", "value": "public, max-age=86400, immutable" }] },
     {

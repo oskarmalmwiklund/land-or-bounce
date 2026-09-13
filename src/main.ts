@@ -2,7 +2,7 @@ import '@fontsource-variable/fraunces';
 import '@fontsource-variable/familjen-grotesk';
 import '@fontsource-variable/jetbrains-mono';
 import './styles.css';
-import { copyImage, download, renderCard, shareCard, type CardInput } from './judge/card';
+import { copyImage, download, renderCard, shareCard, toBlob, type CardInput } from './judge/card';
 import { variantsOf } from './judge/measure';
 import { Narrator, type Line } from './judge/narrator';
 import type { Score } from './judge/score';
@@ -186,7 +186,7 @@ const foldsWanted = () => { const f = Number(new URLSearchParams(location.search
 // ---- the show -----------------------------------------------------------------------------
 function resetShow(): void {
   narrator = null; variantFrames = null; heats = new Map(); typeQueue = []; typing = false; shownFold = 1;
-  lastScore = null; lastCard = null; cardCanvas = null;
+  lastScore = null; lastCard = null; cardCanvas = null; storedCard = null; storing = null;
   screen.override = null; screen.overrideKind = null; screen.heat = null; screen.setLanding(null); screen.resetGlance();
   $('stamp').hidden = true; $('stamp').className = 'stamp';
   $('variantTag').hidden = true; $('oops').hidden = true; $('veil').hidden = true;
@@ -395,7 +395,28 @@ async function makeCard(): Promise<HTMLCanvasElement | null> {
   return cardCanvas;
 }
 const cardName = () => `land-or-bounce-${(current?.host ?? 'page').replace(/[^a-z0-9]+/gi, '-').toLowerCase()}-${lastScore?.total ?? 0}.png`;
-const shareLink = () => current?.url ? `${location.origin}/?site=${encodeURIComponent(current.host)}` : location.origin;
+/** The id of this verdict's card in the store, once uploaded, so the link's preview is the card. */
+let storedCard: string | null = null;
+let storing: Promise<void> | null = null;
+const shareLink = () => {
+  if (!current?.url) return location.origin;
+  const q = new URLSearchParams({ site: current.host });
+  if (storedCard && lastScore) { q.set('card', storedCard); q.set('score', String(lastScore.total)); }
+  return `${location.origin}/?${q}`;
+};
+/** Put the card in the store (once per verdict) so a shared link previews it. Quietly does nothing offline. */
+function storeCard(cv: HTMLCanvasElement): Promise<void> {
+  if (storedCard || !current?.url) return Promise.resolve();
+  storing ??= (async () => {
+    try {
+      const blob = await toBlob(cv);
+      if (blob.size > 1_400_000) return;
+      const res = await fetch('/api/card', { method: 'POST', headers: { 'Content-Type': 'image/png' }, body: blob });
+      if (res.ok) { const { id } = await res.json(); if (typeof id === 'string') storedCard = id; }
+    } catch { /* the link still works, it just previews the house image */ }
+  })();
+  return storing;
+}
 /** The post: the verdict, then a line that brings people back here. */
 const postText = (withLink: boolean) => {
   if (!current || !lastScore) return 'Land or Bounce';
@@ -411,12 +432,15 @@ async function openShare(): Promise<void> {
   $('postText').textContent = postText(true);
   $('nativeShare').hidden = !navigator.share;
   $<HTMLDialogElement>('shareDialog').showModal();
+  // store the card so the link previews it; the post text picks up the id when it lands
+  void storeCard(cv).then(() => { if ($<HTMLDialogElement>('shareDialog').open) $('postText').textContent = postText(true); });
 }
 
 /** Copy the card, then open the posting site with the text. */
 async function shareTo(where: string): Promise<void> {
   const cv = await makeCard();
   if (!cv) return;
+  await storeCard(cv);
   const link = shareLink();
   const intents: Record<string, string> = {
     x: `https://x.com/intent/post?text=${encodeURIComponent(postText(false))}&url=${encodeURIComponent(link)}`,

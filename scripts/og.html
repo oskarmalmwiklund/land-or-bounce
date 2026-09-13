@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<style>
+@font-face { font-family: F; src: url(../node_modules/@fontsource-variable/fraunces/files/fraunces-latin-wght-normal.woff2) format('woff2'); font-weight: 100 900; }
+@font-face { font-family: G; src: url(../node_modules/@fontsource-variable/familjen-grotesk/files/familjen-grotesk-latin-wght-normal.woff2) format('woff2'); font-weight: 400 700; }
+@font-face { font-family: M; src: url(../node_modules/@fontsource-variable/jetbrains-mono/files/jetbrains-mono-latin-wght-normal.woff2) format('woff2'); font-weight: 100 800; }
+html, body { margin: 0; width: 1200px; height: 630px; overflow: hidden; background: #17110E; color: #F6ECDC; font-family: G, sans-serif; }
+.lamp { position: absolute; left: 50%; top: -120px; width: 1400px; height: 900px; transform: translateX(-50%); background: radial-gradient(ellipse at 50% 0%, rgba(255,179,71,0.45), rgba(255,158,44,0.12) 35%, rgba(0,0,0,0) 70%); }
+.cone { position: absolute; left: 50%; top: 0; width: 0; height: 0; border-left: 560px solid transparent; border-right: 560px solid transparent; border-top: 630px solid rgba(255,179,71,0.06); transform: translateX(-50%) scaleY(1); }
+.table { position: absolute; left: 0; right: 0; bottom: 0; height: 84px; background: linear-gradient(#2A1F18, #17110E); border-top: 2px solid rgba(255,179,71,0.12); }
+.wrap { position: absolute; left: 70px; top: 0; bottom: 84px; width: 700px; display: flex; flex-direction: column; justify-content: center; text-align: left; }
+.kicker { font-size: 18px; letter-spacing: 0.16em; text-transform: uppercase; color: #FFB347; font-weight: 700; margin-bottom: 18px; }
+h1 { margin: 0; font-family: F, serif; font-variation-settings: 'SOFT' 100, 'WONK' 1, 'opsz' 144; font-weight: 700; font-size: 148px; line-height: 0.88; letter-spacing: -0.035em; text-shadow: 0 6px 60px rgba(255,179,71,0.22); }
+h1 em { font-style: italic; font-weight: 300; color: #B9A78F; }
+h1 .dot { color: #FFD23F; }
+.lead { margin-top: 28px; font-size: 25px; color: #B9A78F; max-width: 640px; line-height: 1.35; }
+.lead b { color: #F6ECDC; font-weight: 600; }
+.stamps { position: absolute; right: 120px; top: 215px; transform: rotate(-12deg); }
+.stamp { display: inline-block; padding: 12px 30px 14px; border-radius: 12px; border: 5px solid; font-family: F, serif; font-weight: 800; font-size: 54px; letter-spacing: 0.04em; box-shadow: 0 10px 0 rgba(0,0,0,0.35), 0 24px 50px rgba(0,0,0,0.45); }
+.landed { background: #FFD23F; color: #4A3800; border-color: #4A3800; }
+.bounced { background: #C2427A; color: #FFE3EF; border-color: #FFE3EF; position: absolute; left: -30px; top: 112px; transform: rotate(9deg); }
+.mono { position: absolute; left: 60px; bottom: 30px; font-family: M, monospace; font-size: 17px; color: #7E705F; }
+.url { position: absolute; right: 60px; bottom: 30px; font-family: M, monospace; font-size: 17px; color: #B9A78F; }
+svg.fly { position: absolute; }
+</style></head><body>
+<div class="lamp"></div><div class="cone"></div><div class="table"></div>
+<div class="wrap">
+  <div class="kicker">A fruit fly has opinions about your landing page</div>
+  <h1>Land <em>or</em><br>bounce<span class="dot">.</span></h1>
+  <p class="lead"><b>29,195 real neurons</b> of a fruit fly’s eye look at your site, live in the browser, and score it 0 to 100. It cannot read. It has no red receptors.</p>
+</div>
+<div class="stamps"><span class="stamp landed">LANDED</span><span class="stamp bounced">BOUNCED</span></div>
+<div class="mono">29,195 neurons · 592,137 connections · MaleCNS v1.0</div>
+<div class="url">land-or-bounce.vercel.app</div>
+<script>
+// a few flies around the lamp, drawn the same way the app draws them
+const svgNS = 'http://www.w3.org/2000/svg';
+function fly(x, y, a, s) {
+  const g = document.createElementNS(svgNS, 'svg'); g.setAttribute('class', 'fly'); g.setAttribute('viewBox', '-20 -12 40 24'); g.style.left = (x - s) + 'px'; g.style.top = (y - s * 0.6) + 'px'; g.style.width = 2 * s + 'px'; g.style.height = 1.2 * s + 'px'; g.style.transform = `rotate(${a}deg)`;
+  g.innerHTML = `<ellipse cx="-9" cy="-4" rx="10" ry="4" fill="rgba(246,236,220,0.42)" transform="rotate(-28 -9 -4)"/><ellipse cx="-9" cy="4" rx="10" ry="4" fill="rgba(246,236,220,0.42)" transform="rotate(28 -9 4)"/><ellipse cx="-5" cy="0" rx="8" ry="4" fill="#1A1410"/><ellipse cx="3" cy="0" rx="5" ry="3.7" fill="#2A211B"/><circle cx="9" cy="0" r="2.8" fill="#1A1410"/><circle cx="9.6" cy="-1.6" r="1.4" fill="#B8322E"/><circle cx="9.6" cy="1.6" r="1.4" fill="#B8322E"/>`;
+  document.body.appendChild(g);
+}
+[[430,70,-30,22],[560,40,15,18],[700,90,-100,24],[820,55,40,17],[300,40,-60,16],[640,150,120,14],[960,120,-20,20],[1040,60,80,15],[500,150,-140,13],[880,180,60,12],[1000,480,30,16],[1120,420,-70,13]].forEach(([x,y,a,s]) => fly(x,y,a,s));
+</script>
+</body></html>

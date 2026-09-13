@@ -57,7 +57,7 @@ app.innerHTML = `
         <label class="sr-only" for="url">Your website</label>
         <span class="proto" aria-hidden="true">https://</span>
         <input id="url" name="url" type="text" inputmode="url" spellcheck="false" placeholder="yoursite.com" required>
-        <button type="submit" class="go" id="go"><span>Release the fly</span></button>
+        <button type="submit" class="go" id="go"><span class="long">Release the fly</span><span class="short">Go</span></button>
       </form>
       <p class="hero-foot" id="heroFoot"><label class="text-button" for="filePick">or drop a screenshot<input class="hidden-input" type="file" id="filePick" accept="image/*"></label><span class="sep">·</span>Only the address leaves your browser. The fly runs here.</p>
     </div>

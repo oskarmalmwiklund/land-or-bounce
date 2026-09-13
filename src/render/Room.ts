@@ -35,7 +35,8 @@ export class Room {
 
   private spawn(): Fly {
     const x = rand(0, this.width || 800), y = rand(0, (this.height || 600) * 0.7);
-    return { x, y, px: x, py: y, vx: 0, vy: 0, heading: rand(0, Math.PI * 2), speed: rand(90, 220), size: rand(10, 15), nextSaccade: 0, wing: rand(0, 6), sitting: false, sitUntil: 0, perch: null };
+    const k = Math.min(1, Math.max(0.7, (this.width || 800) / 900));   // smaller flies on a small screen
+    return { x, y, px: x, py: y, vx: 0, vy: 0, heading: rand(0, Math.PI * 2), speed: rand(90, 220) * k, size: rand(10, 15) * k, nextSaccade: 0, wing: rand(0, 6), sitting: false, sitUntil: 0, perch: null };
   }
 
   resize(width: number, height: number): void {
@@ -138,10 +139,12 @@ export class Room {
     table.addColorStop(0, '#2A1F18'); table.addColorStop(1, '#17110E');
     c.fillStyle = table; c.fillRect(0, ty, W, H - ty);
     c.fillStyle = 'rgba(255,179,71,0.10)'; c.fillRect(0, ty, W, 2);
-    // the fruit bowl, bottom left, a little past its best
-    const bx = Math.min(W * 0.16, 220), by = ty;
+    // the fruit bowl, bottom left, a little past its best; smaller on a phone so it stays out of the copy
+    const bowlScale = Math.min(1, Math.max(0.55, W / 900));
+    const bx = Math.min(W * 0.16, 220) * (W < 600 ? 1.4 : 1), by = ty;
     c.save();
     c.translate(bx, by);
+    c.scale(bowlScale, bowlScale);
     // banana
     c.strokeStyle = '#B79A2A'; c.lineWidth = 16; c.lineCap = 'round';
     c.beginPath(); c.moveTo(-70, -34); c.quadraticCurveTo(-10, -78, 62, -46); c.stroke();

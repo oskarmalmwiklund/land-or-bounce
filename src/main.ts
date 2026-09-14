@@ -41,7 +41,10 @@ app.innerHTML = `
 <div class="grain" aria-hidden="true"></div>
 <main class="page" id="page" data-state="waking">
   <header class="top">
-    <a class="wordmark" href="/" aria-label="Land or Bounce home">Land <span>or</span> Bounce<i>.</i></a>
+    <div class="brand">
+      <a class="wordmark" href="/" aria-label="Land or Bounce home">Land <span>or</span> Bounce<i>.</i></a>
+      <a class="labs" href="https://multiply.co/labs" target="_blank" rel="noopener" title="A Multiply experiment. More at multiply.co/labs"><i></i>Multiply <b>Labs</b></a>
+    </div>
     <nav class="top-nav">
       <span class="live" id="live" title="The eye is running in a Web Worker in this tab"><i></i><b id="liveSpikes">0</b> spikes / 60 ms</span>
       <button type="button" class="text-button" id="aboutButton">How it works</button>
@@ -96,7 +99,10 @@ app.innerHTML = `
   <footer class="foot">
     <span>Retina and lamina of <a href="https://male-cns.janelia.org/" target="_blank" rel="noopener">MaleCNS v1.0</a> (CC BY 4.0), simulated at 0.1 ms in your browser. Model activity, not fly behaviour.</span>
     <span class="mono" id="footFacts"></span>
-    <a href="https://github.com/oskarmalmwiklund/land-or-bounce" target="_blank" rel="noopener">Source</a>
+    <span class="foot-links">
+      <span>A <a href="https://multiply.co" target="_blank" rel="noopener">Multiply</a> experiment. More at <a href="https://multiply.co/labs" target="_blank" rel="noopener">multiply.co/labs</a></span>
+      <a href="https://github.com/oskarmalmwiklund/land-or-bounce" target="_blank" rel="noopener">Source</a>
+    </span>
   </footer>
 </main>
 
@@ -142,6 +148,7 @@ app.innerHTML = `
     <h3>What it cannot tell you</h3>
     <p>It cannot read. It has no memory of brands and no idea what a button is. In the full 166,700-neuron model the image signal stops at the lamina, so this page shows exactly the part that carries signal: pre-attentive salience at the first synapse, nothing deeper. Dark pages with bright elements are high contrast to this eye and score well on Notice; that is a property of the eye, not a design recommendation.</p>
     <p>Built on <a href="https://github.com/oskarmalmwiklund/swat-or-buy" target="_blank" rel="noopener">Swat or Buy</a>, which judges ads the same way. Simulator lineage: Bananflugakompassen and Stonkfly (MIT).</p>
+    <p class="labs-note">This is a <a href="https://multiply.co" target="_blank" rel="noopener">Multiply</a> experiment, one of several at <a href="https://multiply.co/labs" target="_blank" rel="noopener">multiply.co/labs</a>.</p>
   </div>
 </dialog>`;
 

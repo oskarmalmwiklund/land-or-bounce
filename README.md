@@ -9,6 +9,10 @@ Sibling of [Swat or Buy](https://github.com/oskarmalmwiklund/swat-or-buy), which
 side by side with the same eye. The kernel, retinal mapping and the eye circuit data are copied
 from there; see `THIRD_PARTY.md`.
 
+A [Multiply](https://multiply.co) experiment. More of them at
+[multiply.co/labs](https://multiply.co/labs); the app says so in its header, footer and
+"How it works".
+
 ## What happens on the page
 
 1. **The room.** A kitchen at night, one lamp, a bowl of fruit past its best, and eighteen

@@ -10,8 +10,8 @@ side by side with the same eye. The kernel, retinal mapping and the eye circuit 
 from there; see `THIRD_PARTY.md`.
 
 A [Multiply](https://multiply.co) experiment. More of them at
-[multiply.co/labs](https://multiply.co/labs); the app says so in its header, footer and
-"How it works".
+[multiply.co/labs](https://multiply.co/labs). The header carries the Multiply Labs badge, the
+footer and "How it works" say so in words; `LABS.md` has the badge for other experiments.
 
 ## What happens on the page
 

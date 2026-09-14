@@ -2,6 +2,7 @@ import '@fontsource-variable/fraunces';
 import '@fontsource-variable/familjen-grotesk';
 import '@fontsource-variable/jetbrains-mono';
 import './styles.css';
+import { labsBadge } from './labs/badge';
 import { copyImage, download, renderCard, shareCard, toJpeg, type CardInput } from './judge/card';
 import { variantsOf } from './judge/measure';
 import { Narrator, type Line } from './judge/narrator';
@@ -43,7 +44,7 @@ app.innerHTML = `
   <header class="top">
     <div class="brand">
       <a class="wordmark" href="/" aria-label="Land or Bounce home">Land <span>or</span> Bounce<i>.</i></a>
-      <a class="labs" href="https://multiply.co/labs" target="_blank" rel="noopener" title="A Multiply experiment. More at multiply.co/labs"><i></i>Multiply <b>Labs</b></a>
+      ${labsBadge()}
     </div>
     <nav class="top-nav">
       <span class="live" id="live" title="The eye is running in a Web Worker in this tab"><i></i><b id="liveSpikes">0</b> spikes / 60 ms</span>

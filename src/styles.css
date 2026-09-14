@@ -31,12 +31,8 @@ button, input { font: inherit; color: inherit; }
 .wordmark { font-family: 'Fraunces Variable', serif; font-variation-settings: 'SOFT' 100, 'WONK' 1; font-weight: 700; font-size: 22px; text-decoration: none; letter-spacing: -0.01em; }
 .wordmark span { font-style: italic; font-weight: 400; color: var(--cream-muted); margin: 0 0.12em; }
 .wordmark i { color: var(--banana); font-style: normal; }
-.brand { display: flex; align-items: baseline; gap: 14px; min-width: 0; }
-.labs { display: inline-flex; align-items: center; gap: 7px; font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--cream-faint); text-decoration: none; white-space: nowrap; }
-.labs i { width: 6px; height: 6px; border-radius: 50%; background: var(--banana); box-shadow: 0 0 8px var(--banana); }
-.labs b { font-weight: 600; color: var(--cream-muted); }
-.labs:hover { color: var(--cream-muted); }
-.labs:hover b { color: var(--banana); }
+.brand { display: flex; align-items: center; gap: 16px; min-width: 0; }
+.brand .mlabs { position: relative; top: 1px; }
 .top-nav { display: flex; align-items: center; gap: 18px; }
 .live { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--cream-muted); font-family: 'JetBrains Mono Variable', monospace; }
 .live i { width: 7px; height: 7px; border-radius: 50%; background: var(--lamp); box-shadow: 0 0 10px var(--lamp); animation: pulse 1.6s ease-in-out infinite; }
@@ -85,8 +81,9 @@ button, input { font: inherit; color: inherit; }
 @media (max-width: 560px) {
   .top { padding-top: 16px; }
   .wordmark { font-size: 19px; }
-  .brand { flex-direction: column; align-items: flex-start; gap: 4px; }
-  .labs { font-size: 11px; }
+  .brand { flex-direction: column; align-items: flex-start; gap: 8px; }
+  .brand .mlabs { --mlabs-h: 26px; font-size: 12px; gap: 6px; padding: 0 10px 0 5px; top: 0; }
+  .brand .mlabs svg { width: 16px; height: 16px; }
   .stage { padding: 4vh 0 28px; gap: 20px; }
   .kicker { font-size: 11px; letter-spacing: 0.1em; }
   .lead { font-size: 15px; margin-top: 16px; }

@@ -1,0 +1,16 @@
+/* Multiply Labs badge. Self-contained: drop badge.ts + this file into any experiment.
+   Black pill, white pinwheel, lowercase wordmark. Works on dark and light grounds. */
+.mlabs {
+  --mlabs-h: 30px;
+  display: inline-flex; align-items: center; gap: 8px; height: var(--mlabs-h); padding: 0 12px 0 6px;
+  border-radius: 999px; background: #0A0A0A; color: #fff; border: 1px solid rgba(255,255,255,0.14);
+  font-family: 'Figtree', 'Familjen Grotesk Variable', system-ui, -apple-system, sans-serif; font-size: 13px; line-height: 1;
+  letter-spacing: -0.01em; text-decoration: none; white-space: nowrap; flex: none;
+  transition: border-color 0.2s, transform 0.2s;
+}
+.mlabs:hover { border-color: rgba(255,255,255,0.4); transform: translateY(-1px); }
+.mlabs svg { width: 18px; height: 18px; fill: #fff; display: block; }
+.mlabs b { font-weight: 600; }
+.mlabs span { font-weight: 400; color: rgba(255,255,255,0.72); }
+.mlabs.small { --mlabs-h: 26px; font-size: 12px; gap: 6px; padding: 0 10px 0 5px; }
+.mlabs.small svg { width: 16px; height: 16px; }

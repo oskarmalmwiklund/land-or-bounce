@@ -12,6 +12,7 @@ import type { Heat, Snapshot, Variant, WorkerCommand, WorkerEvent } from './neur
 import { Room } from './render/Room';
 import { Screen } from './render/Screen';
 import { applyPalette } from './theme/palette';
+import { inject } from '@vercel/analytics';
 
 applyPalette(document.documentElement.style);
 
@@ -611,5 +612,8 @@ async function boot(): Promise<void> {
   document.addEventListener('keydown', (e) => { if (e.key === '?' && !about.open && !shareDialog.open && document.activeElement !== $('url')) about.showModal(); });
   $('url').focus();
 }
+
+// Inject Vercel Web Analytics
+inject();
 
 void boot();

@@ -31,7 +31,7 @@ button, input { font: inherit; color: inherit; }
 .wordmark { font-family: 'Fraunces Variable', serif; font-variation-settings: 'SOFT' 100, 'WONK' 1; font-weight: 700; font-size: 22px; text-decoration: none; letter-spacing: -0.01em; }
 .wordmark span { font-style: italic; font-weight: 400; color: var(--cream-muted); margin: 0 0.12em; }
 .wordmark i { color: var(--banana); font-style: normal; }
-.brand { display: flex; align-items: center; gap: 16px; min-width: 0; }
+.brand { display: flex; align-items: center; gap: 16px; min-width: 0; --mlabs-font: 'Familjen Grotesk Variable', system-ui, sans-serif; }
 .brand .mlabs { position: relative; top: 1px; }
 .top-nav { display: flex; align-items: center; gap: 18px; }
 .live { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--cream-muted); font-family: 'JetBrains Mono Variable', monospace; }

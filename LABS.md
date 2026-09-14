@@ -23,7 +23,7 @@ In this repo it lives in `src/labs/badge.ts` and `src/labs/badge.css`; the heade
   --mlabs-ink: #192E03; --mlabs-ink: oklch(27.4% 0.072 132.109);
   display: inline-flex; align-items: center; gap: 7px; height: var(--mlabs-h); padding: 0 12px 0 9px;
   border-radius: 999px; background: var(--mlabs-bg); color: var(--mlabs-ink);
-  font-family: 'Figtree', 'Familjen Grotesk Variable', system-ui, -apple-system, sans-serif; font-size: 13px; line-height: 1;
+  font-family: var(--mlabs-font, 'Figtree', system-ui, -apple-system, sans-serif); font-size: 13px; line-height: 1;
   letter-spacing: -0.01em; text-decoration: none; white-space: nowrap; flex: none;
   transition: filter 0.2s, transform 0.2s;
 }
@@ -36,6 +36,7 @@ In this repo it lives in `src/labs/badge.ts` and `src/labs/badge.css`; the heade
 ```
 
 Rules: the pill stays lime and the ink stays dark green, whatever the experiment's palette.
-Put it beside the experiment's own wordmark in the header. Add `small` where 30 px is too
+Put it beside the experiment's own wordmark in the header and set `--mlabs-font` to the
+experiment's sans so the wordmark matches the page. Add `small` where 30 px is too
 tall. The footer and the about text should also say, in words, that it is a Multiply
 experiment with more at multiply.co/labs.

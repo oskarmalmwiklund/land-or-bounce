@@ -13,6 +13,8 @@
   lamina cut from it by Swat or Buy's `scripts/extract_eye_circuit.py`.
 - Fonts: Fraunces (Undercase Type), Familjen Grotesk (Familjen Fonts) and JetBrains Mono
   (JetBrains), all SIL Open Font License, shipped via Fontsource.
+- The test tube in the Multiply Labs badge (`src/labs/badge.ts`) is TestTube01 from
+  [Hugeicons](https://hugeicons.com) core free icons, MIT.
 - Screenshots: [puppeteer-core](https://github.com/puppeteer/puppeteer) (Apache 2.0) and
   [@sparticuz/chromium](https://github.com/Sparticuz/chromium) (MIT) on Vercel.
 - Pressed hard-shadow buttons follow the look of Swat or Buy, which credits

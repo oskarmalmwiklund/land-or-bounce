@@ -11,35 +11,34 @@ applyPalette(document.documentElement.style);
 
 type Candidate = {
   id: string;
-  captureId?: string;
-  screenshotUrl?: string;
+  captureId: string;
+  screenshotUrl: string;
+  category: string;
   host: string;
   fly: number;
-  palette: [string, string, string];
-  eyebrow: string;
-  headline: string;
-  copy: string;
-  action: string;
-  style: 'editorial' | 'product' | 'minimal' | 'bold';
 };
 
 type Pair = { left: Candidate; right: Candidate; humanLeft?: number; votes?: number; live?: boolean };
 
 const candidates: Candidate[] = [
-  { id: 'north', host: 'north.studio', fly: 78, palette: ['#f4efdf', '#172119', '#d2ff55'], eyebrow: 'NORTH / CREATIVE STUDIO', headline: 'Ideas worth\ngetting lost in.', copy: 'Strategy, identity and digital experiences for people building what comes next.', action: 'See our work', style: 'editorial' },
-  { id: 'orbit', host: 'orbit.run', fly: 64, palette: ['#101225', '#f6f2ff', '#826cff'], eyebrow: 'ORBIT', headline: 'Ship together.\nStay in orbit.', copy: 'One calm home for projects, decisions and the people moving them forward.', action: 'Start for free', style: 'product' },
-  { id: 'field', host: 'fieldnotes.co', fly: 42, palette: ['#f4f0e8', '#2f2d2a', '#e26742'], eyebrow: 'FIELD NOTES № 24', headline: 'A slower way\nto see the world.', copy: 'Independent stories about craft, place and the people who care for both.', action: 'Read the journal', style: 'minimal' },
-  { id: 'volt', host: 'volt.energy', fly: 91, palette: ['#181818', '#ffffff', '#f4ff32'], eyebrow: 'ENERGY, REWIRED', headline: 'POWER\nEVERYTHING.', copy: 'Clean energy that works harder for your home, your car and the grid.', action: 'Make the switch', style: 'bold' },
-  { id: 'morrow', host: 'morrow.health', fly: 57, palette: ['#e9f1ee', '#173d36', '#f6a78d'], eyebrow: 'CARE THAT LISTENS', headline: 'Feel better,\nat your pace.', copy: 'Everyday healthcare designed around real conversations and your real life.', action: 'Meet your care team', style: 'minimal' },
-  { id: 'relay', host: 'relay.dev', fly: 73, palette: ['#ecf0ff', '#15204a', '#ff6f61'], eyebrow: 'RELAY FOR TEAMS', headline: 'Work moves.\nRelay keeps up.', copy: 'Automate the handoffs that slow your team down without losing the human touch.', action: 'Build a workflow', style: 'product' },
+  { id: '674c06b7-204a-46e5-aebe-b845ac8ceeef', captureId: '674c06b7-204a-46e5-aebe-b845ac8ceeef', host: 'lovable.dev', fly: 24, category: 'ai-builder', screenshotUrl: 'https://hd2ecqjmwbrpkccv.public.blob.vercel-storage.com/science/screenshots/0037ba66-88a4-4b49-83e9-a1c40b1ecd7d.jpg' },
+  { id: '038ab07c-c8a0-496c-88bc-71e0beb97abf', captureId: '038ab07c-c8a0-496c-88bc-71e0beb97abf', host: 'bolt.new', fly: 76, category: 'ai-builder', screenshotUrl: 'https://hd2ecqjmwbrpkccv.public.blob.vercel-storage.com/science/screenshots/4b7be83d-a874-462a-a99e-b2b2c596144e.jpg' },
+  { id: '892fd2ff-a955-4646-bef2-ee295f9e5040', captureId: '892fd2ff-a955-4646-bef2-ee295f9e5040', host: 'stripe.com', fly: 49, category: 'payments', screenshotUrl: 'https://hd2ecqjmwbrpkccv.public.blob.vercel-storage.com/science/screenshots/9412f78f-58da-4701-b584-83193f1f4edd.jpg' },
+  { id: '1de14d8f-0357-44da-9d30-8b01e59101a4', captureId: '1de14d8f-0357-44da-9d30-8b01e59101a4', host: 'mollie.com', fly: 60, category: 'payments', screenshotUrl: 'https://hd2ecqjmwbrpkccv.public.blob.vercel-storage.com/science/screenshots/00e537df-68cf-4fb6-a201-6d5947de8fae.jpg' },
+  { id: 'b524b1ed-00d3-4ff5-b53e-527112c71674', captureId: 'b524b1ed-00d3-4ff5-b53e-527112c71674', host: 'linear.app', fly: 91, category: 'productivity', screenshotUrl: 'https://hd2ecqjmwbrpkccv.public.blob.vercel-storage.com/science/screenshots/adfa0412-dda8-484f-9927-11ee0d0271a0.jpg' },
+  { id: '9eeaaf7c-230f-4d2e-93c3-bd46778a051f', captureId: '9eeaaf7c-230f-4d2e-93c3-bd46778a051f', host: 'notion.com', fly: 24, category: 'productivity', screenshotUrl: 'https://hd2ecqjmwbrpkccv.public.blob.vercel-storage.com/science/screenshots/4200c6ba-400a-40f8-b88d-149649284768.jpg' },
+  { id: '6ce5f443-04ab-4630-a0dd-b612ff8c748c', captureId: '6ce5f443-04ab-4630-a0dd-b612ff8c748c', host: 'shopify.com', fly: 93, category: 'commerce', screenshotUrl: 'https://hd2ecqjmwbrpkccv.public.blob.vercel-storage.com/science/screenshots/dab562b9-65fe-4565-abda-926df9a82474.jpg' },
+  { id: 'e3c28591-9c3d-486c-b845-b560c56bab64', captureId: 'e3c28591-9c3d-486c-b845-b560c56bab64', host: 'gumroad.com', fly: 94, category: 'commerce', screenshotUrl: 'https://hd2ecqjmwbrpkccv.public.blob.vercel-storage.com/science/screenshots/3c6854b9-4bbf-4478-8918-6ce7edfa3c9b.jpg' },
+  { id: '4ff46ca3-1e58-4946-9445-94706a3edc4a', captureId: '4ff46ca3-1e58-4946-9445-94706a3edc4a', host: 'mailchimp.com', fly: 77, category: 'marketing', screenshotUrl: 'https://hd2ecqjmwbrpkccv.public.blob.vercel-storage.com/science/screenshots/e57a355a-2089-46da-9c3c-315a6c19e98e.jpg' },
+  { id: '58da1684-378f-4046-a618-7a89c4372496', captureId: '58da1684-378f-4046-a618-7a89c4372496', host: 'beehiiv.com', fly: 94, category: 'marketing', screenshotUrl: 'https://hd2ecqjmwbrpkccv.public.blob.vercel-storage.com/science/screenshots/c5f2e64a-e814-4ba9-857d-57849ebca980.jpg' },
 ];
 
 const pairs: Pair[] = [
-  { left: candidates[0], right: candidates[1], humanLeft: 62, votes: 184 },
-  { left: candidates[2], right: candidates[3], humanLeft: 44, votes: 137 },
-  { left: candidates[4], right: candidates[5], humanLeft: 55, votes: 211 },
-  { left: candidates[1], right: candidates[2], humanLeft: 59, votes: 166 },
-  { left: candidates[3], right: candidates[0], humanLeft: 47, votes: 192 },
+  { left: candidates[0], right: candidates[1], live: true },
+  { left: candidates[2], right: candidates[3], live: true },
+  { left: candidates[4], right: candidates[5], live: true },
+  { left: candidates[6], right: candidates[7], live: true },
+  { left: candidates[8], right: candidates[9], live: true },
 ];
 
 const query = new URLSearchParams(location.search);
@@ -87,6 +86,7 @@ let agreements = 0;
 let locked = false;
 let currentPair: Pair = pairs[0];
 let sessionId = crypto.randomUUID();
+let usedCategories = new Set<string>();
 let roundStarted = performance.now();
 const GLANCE_MS = 5000;
 const REVEAL_MS = 1500;
@@ -113,21 +113,16 @@ function escapeHtml(value: string): string {
 }
 
 function card(candidate: Candidate, side: 'left' | 'right'): string {
-  if (candidate.screenshotUrl) return `<button class="site-choice live-site" data-side="${side}" aria-label="Choose ${escapeHtml(candidate.host)}"><span class="site-browser"><i></i><i></i><i></i><small>${escapeHtml(candidate.host)}</small></span><span class="live-shot"><img src="${escapeHtml(candidate.screenshotUrl)}" alt="Landing page for ${escapeHtml(candidate.host)}"></span><span class="pick-label">Pick this page <b>${side === 'left' ? '←' : '→'}</b></span></button>`;
-  const [bg, ink, accent] = candidate.palette;
-  return `<button class="site-choice site-${candidate.style}" data-side="${side}" style="--site-bg:${bg};--site-ink:${ink};--site-accent:${accent}" aria-label="Choose ${candidate.host}">
-    <span class="site-browser"><i></i><i></i><i></i><small>${candidate.host}</small></span>
-    <span class="site-canvas"><span class="site-nav"><b>${candidate.eyebrow.split(' ')[0]}</b><i></i><i></i></span><span class="site-copy"><small>${candidate.eyebrow}</small><strong>${candidate.headline.replace('\n', '<br>')}</strong><span>${candidate.copy}</span><em>${candidate.action} →</em></span><span class="site-art"><i></i><b></b><u></u></span></span>
-    <span class="pick-label">Pick this page <b>${side === 'left' ? '←' : '→'}</b></span>
-  </button>`;
+  return `<button class="site-choice live-site" data-side="${side}" aria-label="Choose ${escapeHtml(candidate.host)}"><span class="site-browser"><i></i><i></i><i></i><small>${escapeHtml(candidate.host)}</small></span><span class="live-shot"><img src="${escapeHtml(candidate.screenshotUrl)}" alt="Landing page for ${escapeHtml(candidate.host)}"></span><span class="pick-label">Pick this page <b>${side === 'left' ? '←' : '→'}</b></span></button>`;
 }
 
 async function livePair(): Promise<Pair | null> {
   try {
-    const response = await fetch('/api/science-pair');
+    const exclude = encodeURIComponent([...usedCategories].join(','));
+    const response = await fetch(`/api/science-pair?exclude=${exclude}`);
     if (!response.ok) return null;
     const data = await response.json();
-    const from = (item: { id: string; hostname: string; screenshot_url: string; fly_score: number }): Candidate => ({ id: item.id, captureId: item.id, host: item.hostname, screenshotUrl: item.screenshot_url, fly: Number(item.fly_score), palette: ['#eee', '#111', '#fc3'], eyebrow: '', headline: '', copy: '', action: '', style: 'minimal' });
+    const from = (item: { id: string; hostname: string; screenshot_url: string; fly_score: number; category: string }): Candidate => ({ id: item.id, captureId: item.id, host: item.hostname, screenshotUrl: item.screenshot_url, fly: Number(item.fly_score), category: item.category });
     return { left: from(data.left), right: from(data.right), live: true };
   } catch { return null; }
 }
@@ -137,8 +132,9 @@ async function showRound(): Promise<void> {
   locked = true;
   $('reveal').hidden = true;
   $('pair').innerHTML = '<div class="pair-loading">Choosing two pages…</div>';
-  currentPair = await livePair() ?? pairs[round];
+  currentPair = await livePair() ?? pairs.find((pair) => !usedCategories.has(pair.left.category)) ?? pairs[round];
   const pair = currentPair;
+  usedCategories.add(pair.left.category);
   $('roundNum').textContent = String(round + 1);
   $('progress').style.width = `${round * 20}%`;
   $('reveal').hidden = true;
@@ -204,6 +200,7 @@ function next(): void {
 function start(): void {
   stopTimers();
   round = 0; agreements = 0;
+  usedCategories = new Set();
   sessionId = crypto.randomUUID();
   $('scienceIntro').hidden = true;
   $('scienceFinish').hidden = true;

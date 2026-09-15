@@ -54,10 +54,12 @@ agreement rate. A notice beside the website form explains that submission consen
 in the research dataset and comparison pool. Completed website verdicts save automatically and
 invite visitors to participate. Dropped screenshots remain local. Website screenshots live in Vercel Blob;
 site metadata, versioned fly runs, anonymous sessions and pairwise votes live in Neon Postgres.
-The seeded pool in `src/science.ts` remains as a fallback until two live submissions exist.
+The seeded pool in `src/science.ts` is also the browser fallback, so the experiment always shows
+real captured pages if the database is unavailable.
 
-The live pool starts with four matched categories: Lovable/Bolt (AI builders), Stripe/Mollie
-(payments), Linear/Notion (productivity), and Shopify/Gumroad (commerce). New submissions are
+The live pool starts with five matched categories: Lovable/Bolt (AI builders), Stripe/Mollie
+(payments), Linear/Notion (productivity), Shopify/Gumroad (commerce), and Mailchimp/Beehiiv
+(marketing). Each five-choice session samples each category once. New submissions are
 classified from their hostname and page title. Pair selection samples only categories containing
 at least two pages, so a new page waits until it has a meaningful counterpart instead of being
 forced into an unrelated comparison.

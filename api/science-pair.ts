@@ -16,8 +16,11 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
     if (rows.length < 2) { reply(res, 404, { error: 'The live pool needs two pages.' }); return; }
     const groups = new Map<string, typeof rows>();
     for (const row of rows) groups.set(String(row.category), [...(groups.get(String(row.category)) ?? []), row]);
-    const eligible = [...groups.values()].filter((group) => group.length >= 2);
-    const pool = eligible.length ? eligible[Math.floor(Math.random() * eligible.length)] : rows;
+    const excluded = new Set((new URL(req.url ?? '/', 'http://localhost').searchParams.get('exclude') ?? '').split(',').filter(Boolean));
+    const matched = [...groups.values()].filter((group) => group.length >= 2);
+    const eligible = matched.filter((group) => !excluded.has(String(group[0].category)));
+    const choices = eligible.length ? eligible : matched;
+    const pool = choices.length ? choices[Math.floor(Math.random() * choices.length)] : rows;
     for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]]; }
     // Left/right ordering comes from this random query and is stored again with every vote.
     reply(res, 200, { left: pool[0], right: pool[1], matched_on: pool[0].category === pool[1].category ? 'category' : 'fallback' });

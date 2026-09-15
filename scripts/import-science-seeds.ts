@@ -8,6 +8,7 @@ const seeds = [
   ['https://stripe.com/en-se', 'payments'], ['https://www.mollie.com/', 'payments'],
   ['https://linear.app/', 'productivity'], ['https://www.notion.com/product', 'productivity'],
   ['https://www.shopify.com/', 'commerce'], ['https://gumroad.com/', 'commerce'],
+  ['https://mailchimp.com/', 'marketing'], ['https://www.beehiiv.com/', 'marketing'],
 ] as const;
 const nameOf = (url: string) => url.replace(/^https?:\/\//, '').replace(/[^a-z0-9.]+/gi, '_').slice(0, 60);
 const results = JSON.parse(await readFile(new URL('../scratch/calibrate/results.json', import.meta.url), 'utf8')) as Array<Record<string, unknown>>;

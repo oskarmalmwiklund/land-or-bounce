@@ -11,6 +11,8 @@ applyPalette(document.documentElement.style);
 
 type Candidate = {
   id: string;
+  captureId?: string;
+  screenshotUrl?: string;
   host: string;
   fly: number;
   palette: [string, string, string];
@@ -21,7 +23,7 @@ type Candidate = {
   style: 'editorial' | 'product' | 'minimal' | 'bold';
 };
 
-type Pair = { left: Candidate; right: Candidate; humanLeft: number; votes: number };
+type Pair = { left: Candidate; right: Candidate; humanLeft?: number; votes?: number; live?: boolean };
 
 const candidates: Candidate[] = [
   { id: 'north', host: 'north.studio', fly: 78, palette: ['#f4efdf', '#172119', '#d2ff55'], eyebrow: 'NORTH / CREATIVE STUDIO', headline: 'Ideas worth\ngetting lost in.', copy: 'Strategy, identity and digital experiences for people building what comes next.', action: 'See our work', style: 'editorial' },
@@ -83,12 +85,16 @@ const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as 
 let round = 0;
 let agreements = 0;
 let locked = false;
+let currentPair: Pair = pairs[0];
+let sessionId = crypto.randomUUID();
+let roundStarted = performance.now();
 
 function escapeHtml(value: string): string {
   return value.replace(/[&<>\"]/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '\"': '&quot;' }[char]!));
 }
 
 function card(candidate: Candidate, side: 'left' | 'right'): string {
+  if (candidate.screenshotUrl) return `<button class="site-choice live-site" data-side="${side}" aria-label="Choose ${escapeHtml(candidate.host)}"><span class="site-browser"><i></i><i></i><i></i><small>${escapeHtml(candidate.host)}</small></span><span class="live-shot"><img src="${escapeHtml(candidate.screenshotUrl)}" alt="Landing page for ${escapeHtml(candidate.host)}"></span><span class="pick-label">Pick this page <b>${side === 'left' ? '←' : '→'}</b></span></button>`;
   const [bg, ink, accent] = candidate.palette;
   return `<button class="site-choice site-${candidate.style}" data-side="${side}" style="--site-bg:${bg};--site-ink:${ink};--site-accent:${accent}" aria-label="Choose ${candidate.host}">
     <span class="site-browser"><i></i><i></i><i></i><small>${candidate.host}</small></span>
@@ -97,9 +103,22 @@ function card(candidate: Candidate, side: 'left' | 'right'): string {
   </button>`;
 }
 
-function showRound(): void {
+async function livePair(): Promise<Pair | null> {
+  try {
+    const response = await fetch('/api/science-pair');
+    if (!response.ok) return null;
+    const data = await response.json();
+    const from = (item: { id: string; hostname: string; screenshot_url: string; fly_score: number }): Candidate => ({ id: item.id, captureId: item.id, host: item.hostname, screenshotUrl: item.screenshot_url, fly: Number(item.fly_score), palette: ['#eee', '#111', '#fc3'], eyebrow: '', headline: '', copy: '', action: '', style: 'minimal' });
+    return { left: from(data.left), right: from(data.right), live: true };
+  } catch { return null; }
+}
+
+async function showRound(): Promise<void> {
   locked = false;
-  const pair = pairs[round];
+  $('pair').innerHTML = '<div class="pair-loading">Choosing two pages…</div>';
+  currentPair = await livePair() ?? pairs[round];
+  const pair = currentPair;
+  roundStarted = performance.now();
   $('roundNum').textContent = String(round + 1);
   $('progress').style.width = `${round * 20}%`;
   $('reveal').hidden = true;
@@ -111,7 +130,7 @@ function showRound(): void {
 function choose(side: 'left' | 'right'): void {
   if (locked) return;
   locked = true;
-  const pair = pairs[round];
+  const pair = currentPair;
   const human = side === 'left' ? pair.left : pair.right;
   const fly = pair.left.fly >= pair.right.fly ? pair.left : pair.right;
   const agreed = human.id === fly.id;
@@ -121,19 +140,22 @@ function choose(side: 'left' | 'right'): void {
     button.classList.toggle('picked', button.dataset.side === side);
     button.disabled = true;
   });
-  const humanPercent = side === 'left' ? pair.humanLeft : 100 - pair.humanLeft;
+  const humanPercent = pair.humanLeft == null ? null : side === 'left' ? pair.humanLeft : 100 - pair.humanLeft;
   const reveal = $('reveal');
   reveal.className = `reveal ${agreed ? 'agree' : 'disagree'}`;
-  reveal.innerHTML = `<div><span>${agreed ? 'SAME INSTINCT' : 'SPLIT DECISION'}</span><strong>${agreed ? 'The fly picked it too.' : `The fly picked ${fly.host}.`}</strong><small>${humanPercent}% of humans picked ${human.host} in this demo.</small></div><button id="nextRound">${round === pairs.length - 1 ? 'See my result' : 'Next pair'} →</button>`;
+  reveal.innerHTML = `<div><span>${agreed ? 'SAME INSTINCT' : 'SPLIT DECISION'}</span><strong>${agreed ? 'The fly picked it too.' : `The fly picked ${escapeHtml(fly.host)}.`}</strong><small>${humanPercent == null ? 'Your choice is now part of the study.' : `${humanPercent}% of humans picked ${escapeHtml(human.host)} in this demo.`}</small></div><button id="nextRound">${round === pairs.length - 1 ? 'See my result' : 'Next pair'} →</button>`;
   reveal.hidden = false;
   $('progress').style.width = `${(round + 1) * 20}%`;
   $('nextRound').addEventListener('click', next);
+  if (pair.live && pair.left.captureId && pair.right.captureId && human.captureId && fly.captureId) {
+    void fetch('/api/science-vote', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sessionId, leftId: pair.left.captureId, rightId: pair.right.captureId, chosenId: human.captureId, flyChoiceId: fly.captureId, responseMs: Math.round(performance.now() - roundStarted), round: round + 1, viewport: innerWidth < 700 ? 'mobile' : 'desktop', completed: round === pairs.length - 1 }) });
+  }
   window.setTimeout(() => $('nextRound').focus(), 100);
 }
 
 function next(): void {
   round += 1;
-  if (round < pairs.length) { showRound(); return; }
+  if (round < pairs.length) { void showRound(); return; }
   localStorage.setItem('land-or-bounce-science', JSON.stringify({ completedAt: Date.now(), agreements, rounds: pairs.length }));
   $('scienceGame').hidden = true;
   $('scienceFinish').hidden = false;
@@ -146,10 +168,11 @@ function next(): void {
 
 function start(): void {
   round = 0; agreements = 0;
+  sessionId = crypto.randomUUID();
   $('scienceIntro').hidden = true;
   $('scienceFinish').hidden = true;
   $('scienceGame').hidden = false;
-  showRound();
+  void showRound();
   scrollTo({ top: 0, behavior: 'smooth' });
 }
 

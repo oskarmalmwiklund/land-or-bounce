@@ -99,7 +99,7 @@ app.innerHTML = `
         <button type="button" class="primary-button share-button" id="shareButton">${ICON.share}<span>Share the card</span></button>
         <div class="folds" id="foldPicker" hidden></div>
       </div>
-      <a class="result-science" id="resultScience" href="/science"><span class="who">NEXT EXPERIMENT</span><strong>Now judge like a human</strong><small>Five quick choices reveal whether your taste agrees with the fly.</small><b>Start →</b></a>
+      <button type="button" class="result-science" id="resultScience"><span class="who">CONTRIBUTE YOUR PAGE</span><strong>Add it to the science experiment</strong><small id="scienceConsentCopy">Your screenshot may be shown anonymously. Then make five quick choices.</small><b id="scienceAction">Add & start →</b></button>
       <details class="transcript" id="transcriptBox"><summary>Everything the fly said</summary><ol id="transcript"></ol></details>
       <button type="button" class="text-button again" id="againButton">Try another page</button>
     </div>
@@ -399,8 +399,8 @@ function showResult(): void {
   $('parts').innerHTML = s.parts.map((p, i) => `<li style="--d:${i * 90}ms"><div class="head"><b>${p.label}</b><span class="q">${p.question}</span></div><div class="bar"><i style="width:${p.score}%" class="${p.score >= 50 ? 'good' : 'bad'}"></i></div><div class="nums"><span class="mono val">${escapeHtml(p.value)}</span><span class="mono pts">${p.score}<small>/100 · ×${p.weight}</small></span></div></li>`).join('');
   const pageMetrics = narrator.metrics.page!;
   lastCard = { image: current.folds[0], host: current.host, score: s, heat: heats.get(1) ?? null, landing: pageMetrics.landing ? { u: pageMetrics.landing.u, v: pageMetrics.landing.v } : null, appHost: APP_HOST, scroll: scroll && scroll.total > 1 ? { best: scroll.best, total: scroll.total } : null };
-  const scienceQuery = new URLSearchParams({ from: current.host, fly: String(s.total) });
-  $<HTMLAnchorElement>('resultScience').href = `/science?${scienceQuery}`;
+  $('resultScience').removeAttribute('disabled');
+  $('scienceAction').textContent = 'Add & start →';
   cardCanvas = null;
   void makeCard();
   setTimeout(() => $('result').scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 600);
@@ -582,6 +582,36 @@ function goIdle(): void {
   const input = $<HTMLInputElement>('url'); input.value = ''; input.focus();
 }
 
+async function contributeToScience(): Promise<void> {
+  if (!current?.url || !current.folds[0] || !lastScore || !narrator?.metrics) {
+    toast('Score a live website before adding it to the experiment.');
+    return;
+  }
+  const button = $<HTMLButtonElement>('resultScience');
+  if (button.disabled) return;
+  button.disabled = true;
+  $('scienceAction').textContent = 'Adding…';
+  try {
+    const source = current.folds[0];
+    const canvas = document.createElement('canvas');
+    canvas.width = source.naturalWidth || 1440; canvas.height = source.naturalHeight || 810;
+    canvas.getContext('2d')!.drawImage(source, 0, 0, canvas.width, canvas.height);
+    const screenshot = canvas.toDataURL('image/jpeg', 0.82);
+    const response = await fetch('/api/science-submit', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url: current.url, hostname: current.host, screenshot, width: canvas.width, height: canvas.height, score: lastScore, metrics: narrator.metrics, consent: true }),
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(result.error || 'Could not save the page.');
+    const q = new URLSearchParams({ from: current.host, fly: String(lastScore.total), submitted: String(result.id) });
+    location.href = `/science?${q}`;
+  } catch (error) {
+    button.disabled = false;
+    $('scienceAction').textContent = 'Try again →';
+    toast(error instanceof Error ? error.message : 'Could not add the page.');
+  }
+}
+
 async function boot(): Promise<void> {
   room = new Room(roomCanvas);
   const fitRoom = () => room.resize(window.innerWidth, window.innerHeight);
@@ -610,6 +640,7 @@ async function boot(): Promise<void> {
   $('againButton').addEventListener('click', goIdle);
   $('oopsAgain').addEventListener('click', goIdle);
   $('shareButton').addEventListener('click', () => { void openShare(); });
+  $('resultScience').addEventListener('click', () => { void contributeToScience(); });
   const shareDialog = $<HTMLDialogElement>('shareDialog');
   $('shareClose').addEventListener('click', () => shareDialog.close());
   shareDialog.addEventListener('click', (e) => { if (e.target === shareDialog) shareDialog.close(); });

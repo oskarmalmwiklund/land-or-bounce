@@ -50,10 +50,14 @@ footer and "How it works" say so in words; `LABS.md` has the badge for other exp
 
 `/science` is a five-choice companion experience: visitors pick which of two landing pages
 grabs them, immediately see whether the fly chose the same page, and finish with their personal
-agreement rate. The home page and every completed fly verdict lead into it. The initial pool is
-seeded in `src/science.ts` and saves completed sessions locally; it is intentionally shaped so a
-database-backed pool of submitted screenshots and anonymous pairwise votes can replace the seed
-data without changing the interaction.
+agreement rate. The home page leads into it, and every completed verdict offers an explicit
+one-click opt-in to add that screenshot to the study. Consented screenshots live in Vercel Blob;
+site metadata, versioned fly runs, anonymous sessions and pairwise votes live in Neon Postgres.
+The seeded pool in `src/science.ts` remains as a fallback until two live submissions exist.
+
+Run `npm run science:migrate` after connecting Neon and pulling Vercel's environment variables.
+`npm run science:export` writes an analysis-ready JSON export containing joined captures, fly
+scores, raw measurements and comparison events.
 
 ## How the score is built
 

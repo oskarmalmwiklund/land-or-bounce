@@ -95,6 +95,15 @@ kbd { padding: 1px 5px; border: 1px solid var(--line); border-radius: 4px; font-
 .science-finish h1 { margin: 0; font-size: clamp(38px, 6vw, 72px); line-height: .95; max-width: 800px; }
 .science-finish > p:not(.kicker):not(.science-note) { max-width: 600px; color: var(--cream-muted); font: 18px/1.45 'Fraunces Variable', serif; }
 .finish-actions { display: flex; gap: 14px; margin-top: 15px; }
+.science-share-card { width: min(100%, 560px); margin: 24px 0 10px; padding: 24px 28px; display: grid; gap: 8px; text-align: left; overflow: hidden; border: 1px solid var(--line); border-radius: 16px; background: radial-gradient(circle at 85% 20%, rgba(255,205,60,.16), transparent 45%), var(--raised); box-shadow: 0 24px 60px rgba(0,0,0,.24); }
+.science-share-card span { color: var(--banana); font: 700 10px 'JetBrains Mono Variable', monospace; letter-spacing: .14em; }
+.science-share-card strong { font: 600 35px 'Fraunces Variable', serif; }
+.science-share-card strong b { color: var(--banana); font-size: 48px; }
+.science-share-card small { color: var(--cream-muted); font-size: 14px; }
+.science-share-card em { margin-top: 9px; color: #9effa5; font-size: 13px; font-style: normal; font-weight: 700; }
+.confetti { position: fixed; inset: 0; z-index: 20; overflow: hidden; pointer-events: none; }
+.confetti i { position: absolute; left: var(--x); top: -20px; width: 9px; height: 15px; background: var(--c); border-radius: 2px; animation: confetti-fall 2.7s cubic-bezier(.15,.6,.4,1) var(--d) forwards; }
+@keyframes confetti-fall { to { transform: translate(var(--dx), 105vh) rotate(var(--r)); opacity: .65; } }
 .science-note { max-width: 540px; margin-top: 32px; color: var(--cream-faint); font-size: 12px; }
 .science-foot { width: 100%; }
 
@@ -115,10 +124,10 @@ kbd { padding: 1px 5px; border: 1px solid var(--line); border-radius: 4px; font-
   .reveal { align-items: stretch; flex-direction: column; gap: 10px; }
   .reveal button { width: 100%; }
   .key-hint { display: none; }
-  .finish-actions { flex-direction: column; width: 100%; max-width: 320px; }
+  .finish-actions { flex-direction: column; width: 100%; max-width: 340px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .demo-card, .science-live i, .agreement-orbit i { animation: none; }
+  .demo-card, .science-live i, .agreement-orbit i, .activity-now i, .confetti i { animation: none; }
   *, *::before, *::after { scroll-behavior: auto !important; }
 }

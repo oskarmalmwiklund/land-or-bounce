@@ -72,11 +72,13 @@ app.innerHTML = `
     <p class="key-hint">Use <kbd>←</kbd> and <kbd>→</kbd> if you like</p>
   </section>
   <section class="science-finish" id="scienceFinish" hidden>
+    <div class="confetti" id="confetti" aria-hidden="true"></div>
     <p class="kicker">Your result</p>
     <div class="agreement-orbit"><span id="agreementNum">0%</span><i aria-hidden="true">✦</i></div>
     <h1 id="agreementTitle">You and the fly see eye to eye.</h1>
     <p id="agreementCopy"></p>
-    <div class="finish-actions"><a class="primary-button" href="/">Test your own page</a><button class="secondary-button" id="againScience">Play again</button></div>
+    <div class="science-share-card" id="scienceSharePreview"><span>LAND OR BOUNCE · SCIENCE</span><strong><b id="shareAgreement">0%</b> fly match</strong><small id="shareLine">I made five gut decisions. The fly had opinions.</small><em>Would your eyes agree? →</em></div>
+    <div class="finish-actions"><button class="primary-button" id="shareScience" disabled>Preparing share card…</button><a class="secondary-button" href="/">Test your own page</a><button class="secondary-button" id="againScience">Play again</button></div>
     ${activityMarkup()}
     <p class="science-note">Your anonymous choices contribute to the research dataset. Completed five-choice runs are included in the participation count.</p>
   </section>
@@ -96,6 +98,7 @@ const GLANCE_MS = 5000;
 const REVEAL_MS = 1500;
 let countdownFrame = 0;
 let advanceTimer = 0;
+let scienceShareLink = `${location.origin}/science`;
 
 function stopTimers(): void {
   cancelAnimationFrame(countdownFrame);
@@ -196,9 +199,64 @@ function next(): void {
   $('scienceFinish').hidden = false;
   const pct = Math.round(agreements / pairs.length * 100);
   $('agreementNum').textContent = `${pct}%`;
+  $('shareAgreement').textContent = `${pct}%`;
   $('agreementTitle').textContent = agreements >= 4 ? 'You and the fly see eye to eye.' : agreements >= 2 ? 'You agree on some things.' : 'Your eyes live in different worlds.';
   $('agreementCopy').textContent = `You picked the same page as the fly ${agreements} out of ${pairs.length} times. ${agreements >= 3 ? 'Low-level visual contrast often pulled you in the same direction.' : 'Your choices may rely more on meaning, familiarity or taste than the fly’s early visual circuitry.'}`;
+  $('shareLine').textContent = `I agreed with the fly ${agreements} out of 5 times.`;
+  celebrate();
+  void prepareScienceShare(pct);
   scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function celebrate(): void {
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const box = $('confetti'); box.replaceChildren();
+  const colours = ['#ffcd3c', '#6dff7a', '#fa9f42', '#a66ca5', '#f6ecdc'];
+  for (let i = 0; i < 70; i++) {
+    const piece = document.createElement('i');
+    piece.style.cssText = `--x:${Math.random() * 100}vw;--dx:${(Math.random() - .5) * 34}vw;--r:${Math.random() * 720 - 360}deg;--d:${Math.random() * .45}s;--c:${colours[i % colours.length]}`;
+    box.append(piece);
+  }
+  setTimeout(() => box.replaceChildren(), 3200);
+}
+
+function renderScienceCard(pct: number): HTMLCanvasElement {
+  const canvas = document.createElement('canvas'); canvas.width = 1200; canvas.height = 630;
+  const ctx = canvas.getContext('2d')!;
+  ctx.fillStyle = '#17110e'; ctx.fillRect(0, 0, 1200, 630);
+  const glow = ctx.createRadialGradient(830, 210, 20, 830, 210, 480); glow.addColorStop(0, 'rgba(255,205,60,.2)'); glow.addColorStop(1, 'rgba(255,205,60,0)'); ctx.fillStyle = glow; ctx.fillRect(0, 0, 1200, 630);
+  ctx.fillStyle = '#ffcd3c'; ctx.font = '700 24px sans-serif'; ctx.fillText('LAND OR BOUNCE · SCIENCE EXPERIMENT', 72, 82);
+  ctx.fillStyle = '#f6ecdc'; ctx.font = '700 160px serif'; ctx.fillText(`${pct}%`, 65, 300);
+  ctx.font = '600 62px serif'; ctx.fillText('fly match', 72, 380);
+  ctx.fillStyle = '#bcb0a2'; ctx.font = '32px sans-serif'; ctx.fillText(`I agreed with the fly ${agreements} out of 5 times.`, 74, 465);
+  ctx.fillStyle = '#6dff7a'; ctx.font = '700 28px sans-serif'; ctx.fillText('Would your eyes agree?  →', 74, 548);
+  ctx.strokeStyle = 'rgba(246,236,220,.16)'; ctx.lineWidth = 2; ctx.strokeRect(28, 28, 1144, 574);
+  return canvas;
+}
+
+async function prepareScienceShare(pct: number): Promise<void> {
+  const button = $<HTMLButtonElement>('shareScience'); button.disabled = true; button.textContent = 'Preparing share card…';
+  scienceShareLink = `${location.origin}/science`;
+  try {
+    const canvas = renderScienceCard(pct);
+    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/jpeg', .9));
+    if (blob) {
+      const response = await fetch('/api/card', { method: 'POST', headers: { 'Content-Type': 'image/jpeg' }, body: blob });
+      if (response.ok) {
+        const { id } = await response.json();
+        if (/^[a-f0-9]{24}$/.test(id)) scienceShareLink = `${location.origin}/verdict?${new URLSearchParams({ science: '1', agreement: String(pct), card: id })}`;
+      }
+    }
+  } catch { /* sharing still works with the experiment's regular preview */ }
+  button.disabled = false; button.textContent = 'Share your result';
+}
+
+function shareScience(): void {
+  const pct = Math.round(agreements / pairs.length * 100);
+  const text = `I matched the fruit fly ${pct}% of the time. Five landing-page choices, 29,195 fly neurons. Would your eyes agree?`;
+  if (navigator.share) { void navigator.share({ title: `${pct}% fly match`, text, url: scienceShareLink }).catch(() => {}); return; }
+  const win = window.open(`https://x.com/intent/post?text=${encodeURIComponent(`${text}\n\n${scienceShareLink}`)}`, '_blank', 'noopener');
+  if (!win) void navigator.clipboard.writeText(`${text}\n\n${scienceShareLink}`);
 }
 
 function start(): void {
@@ -215,6 +273,7 @@ function start(): void {
 
 $('scienceStart').addEventListener('click', start);
 $('againScience').addEventListener('click', start);
+$<HTMLButtonElement>('shareScience').addEventListener('click', shareScience);
 document.addEventListener('keydown', (event) => {
   if ($('scienceGame').hidden || !$('reveal').hidden) return;
   if (event.key === 'ArrowLeft') choose('left');

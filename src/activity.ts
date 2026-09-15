@@ -3,7 +3,7 @@ const REFRESH_MS = 30_000;
 const VISIT_KEY = 'land-or-bounce-visit';
 
 export function activityMarkup(): string {
-  return `<div class="activity-bar" data-activity hidden><span class="activity-now" title="Anonymous browser visits active in the last 90 seconds"><i aria-hidden="true"></i><span data-active-visits></span></span><span class="activity-divider" aria-hidden="true">·</span><span data-completed-experiments title="Saved five-choice runs. Repeat runs count separately."></span></div>`;
+  return `<div class="activity-bar" data-activity hidden><span class="activity-now" title="Anonymous browser visits active in the last 90 seconds"><i aria-hidden="true"></i><strong data-active-visits></strong></span><span class="activity-divider" aria-hidden="true">·</span><span data-completed-experiments title="Saved five-choice runs. Repeat runs count separately."></span></div>`;
 }
 
 /** A short-lived identifier shared across tabs; no URLs, IPs or user agents are stored. */

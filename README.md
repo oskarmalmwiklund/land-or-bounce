@@ -50,8 +50,9 @@ footer and "How it works" say so in words; `LABS.md` has the badge for other exp
 
 `/science` is a five-choice companion experience: visitors pick which of two landing pages
 grabs them, immediately see whether the fly chose the same page, and finish with their personal
-agreement rate. The home page leads into it, and every completed verdict offers an explicit
-one-click opt-in to add that screenshot to the study. Consented screenshots live in Vercel Blob;
+agreement rate. A notice beside the website form explains that submission consents to inclusion
+in the research dataset and comparison pool. Completed website verdicts save automatically and
+invite visitors to participate. Dropped screenshots remain local. Website screenshots live in Vercel Blob;
 site metadata, versioned fly runs, anonymous sessions and pairwise votes live in Neon Postgres.
 The seeded pool in `src/science.ts` remains as a fallback until two live submissions exist.
 

@@ -273,13 +273,16 @@ button, input { font: inherit; color: inherit; }
 .science-mini-stack i:first-child { left: 5px; transform: rotate(-9deg); background: var(--plum); }
 .science-mini-stack i:nth-child(2) { right: 5px; transform: rotate(8deg); background: var(--banana); }
 .science-mini-stack b { position: absolute; z-index: 2; left: 10px; bottom: -4px; font: 8px 'JetBrains Mono Variable', monospace; color: var(--cream); background: var(--ground); padding: 2px 4px; border-radius: 4px; white-space: nowrap; }
-.result-science { grid-column: 1; position: relative; display: grid; width: 100%; gap: 3px; padding: 16px 48px 16px 18px; color: var(--cream); text-align: left; font-family: inherit; cursor: pointer; border: 1px solid var(--line); border-radius: 14px; background: linear-gradient(120deg, rgba(255,190,71,.09), rgba(128,74,127,.1)); }
+.dataset-notice { max-width: 580px; margin: 14px auto 0; color: var(--cream-muted); font-size: 13px; line-height: 1.5; }
+.dataset-notice a { color: var(--lamp); }
+.page:not([data-state="idle"]):not([data-state="waking"]) .dataset-notice { display: none; }
+.result-science { grid-column: 1; display: grid; width: 100%; gap: 6px; padding: 18px; color: var(--cream); text-align: left; text-decoration: none; font-family: inherit; cursor: pointer; border: 1px solid var(--line); border-radius: 14px; background: linear-gradient(120deg, rgba(255,190,71,.09), rgba(128,74,127,.1)); }
 .result-science:hover { border-color: var(--lamp); }
 .result-science:disabled { opacity: .7; cursor: wait; }
 .result-science .who { color: var(--lamp); font-size: 10px; letter-spacing: .14em; font-weight: 700; }
 .result-science strong { font: 600 21px 'Fraunces Variable', serif; }
 .result-science small { color: var(--cream-muted); font-size: 13px; }
-.result-science > b { position: absolute; right: 18px; top: 50%; transform: translateY(-50%); color: var(--banana); }
+.result-science > b { margin-top: 6px; color: var(--banana); font-size: 14px; }
 @media (max-width: 560px) {
   .science-nav { display: none; }
   .science-teaser { grid-template-columns: 54px minmax(0,1fr) auto; gap: 9px; margin-top: 20px; }

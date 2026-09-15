@@ -65,7 +65,8 @@ app.innerHTML = `
         <input id="url" name="url" type="text" inputmode="url" spellcheck="false" placeholder="yoursite.com" required>
         <button type="submit" class="go" id="go"><span class="long">Release the fly</span><span class="short">Go</span></button>
       </form>
-      <p class="hero-foot" id="heroFoot"><label class="text-button" for="filePick">or drop a screenshot<input class="hidden-input" type="file" id="filePick" accept="image/*"></label><span class="sep">·</span>Only the address leaves your browser. The fly runs here.</p>
+      <p class="dataset-notice">By submitting a website, you agree to add its URL, screenshot and fly measurements to our research dataset. Its screenshot may appear in the <a href="/science">science experiment</a>.</p>
+      <p class="hero-foot" id="heroFoot"><label class="text-button" for="filePick">or drop a screenshot<input class="hidden-input" type="file" id="filePick" accept="image/*"></label><span class="sep">·</span>Dropped screenshots stay in your browser.</p>
       <a class="science-teaser" href="/science" aria-label="Join the human versus fly science experiment">
         <span class="science-mini-stack" aria-hidden="true"><i></i><i></i><b>← or →</b></span>
         <span><strong>Would you pick the same page as a fly?</strong><small>Join the 5-click science experiment</small></span>
@@ -99,7 +100,7 @@ app.innerHTML = `
         <button type="button" class="primary-button share-button" id="shareButton">${ICON.share}<span>Share the card</span></button>
         <div class="folds" id="foldPicker" hidden></div>
       </div>
-      <button type="button" class="result-science" id="resultScience"><span class="who">CONTRIBUTE YOUR PAGE</span><strong>Add it to the science experiment</strong><small id="scienceConsentCopy">Your screenshot may be shown anonymously. Then make five quick choices.</small><b id="scienceAction">Add & start →</b></button>
+      <a class="result-science" id="resultScience" href="/science"><span class="who">SCIENCE NEEDS YOUR EYES</span><strong>Would you pick what the fly picks?</strong><small>Five pairs. Five quick choices. Find out where you agree.</small><b>Join the experiment →</b></a>
       <details class="transcript" id="transcriptBox"><summary>Everything the fly said</summary><ol id="transcript"></ol></details>
       <button type="button" class="text-button again" id="againButton">Try another page</button>
     </div>
@@ -399,8 +400,8 @@ function showResult(): void {
   $('parts').innerHTML = s.parts.map((p, i) => `<li style="--d:${i * 90}ms"><div class="head"><b>${p.label}</b><span class="q">${p.question}</span></div><div class="bar"><i style="width:${p.score}%" class="${p.score >= 50 ? 'good' : 'bad'}"></i></div><div class="nums"><span class="mono val">${escapeHtml(p.value)}</span><span class="mono pts">${p.score}<small>/100 · ×${p.weight}</small></span></div></li>`).join('');
   const pageMetrics = narrator.metrics.page!;
   lastCard = { image: current.folds[0], host: current.host, score: s, heat: heats.get(1) ?? null, landing: pageMetrics.landing ? { u: pageMetrics.landing.u, v: pageMetrics.landing.v } : null, appHost: APP_HOST, scroll: scroll && scroll.total > 1 ? { best: scroll.best, total: scroll.total } : null };
-  $('resultScience').removeAttribute('disabled');
-  $('scienceAction').textContent = 'Add & start →';
+  $<HTMLAnchorElement>('resultScience').href = `/science?${new URLSearchParams({ from: current.host, fly: String(s.total) })}`;
+  if (current.url) void contributeToScience();
   cardCanvas = null;
   void makeCard();
   setTimeout(() => $('result').scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 600);
@@ -584,13 +585,8 @@ function goIdle(): void {
 
 async function contributeToScience(): Promise<void> {
   if (!current?.url || !current.folds[0] || !lastScore || !narrator?.metrics) {
-    toast('Score a live website before adding it to the experiment.');
     return;
   }
-  const button = $<HTMLButtonElement>('resultScience');
-  if (button.disabled) return;
-  button.disabled = true;
-  $('scienceAction').textContent = 'Adding…';
   try {
     const source = current.folds[0];
     const canvas = document.createElement('canvas');
@@ -603,12 +599,8 @@ async function contributeToScience(): Promise<void> {
     });
     const result = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(result.error || 'Could not save the page.');
-    const q = new URLSearchParams({ from: current.host, fly: String(lastScore.total), submitted: String(result.id) });
-    location.href = `/science?${q}`;
   } catch (error) {
-    button.disabled = false;
-    $('scienceAction').textContent = 'Try again →';
-    toast(error instanceof Error ? error.message : 'Could not add the page.');
+    toast('Your fly verdict is ready, but we could not save it to the research dataset.');
   }
 }
 
@@ -640,7 +632,6 @@ async function boot(): Promise<void> {
   $('againButton').addEventListener('click', goIdle);
   $('oopsAgain').addEventListener('click', goIdle);
   $('shareButton').addEventListener('click', () => { void openShare(); });
-  $('resultScience').addEventListener('click', () => { void contributeToScience(); });
   const shareDialog = $<HTMLDialogElement>('shareDialog');
   $('shareClose').addEventListener('click', () => shareDialog.close());
   shareDialog.addEventListener('click', (e) => { if (e.target === shareDialog) shareDialog.close(); });

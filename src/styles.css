@@ -254,6 +254,38 @@ button, input { font: inherit; color: inherit; }
 .foot-links { display: flex; flex-wrap: wrap; gap: 8px 24px; }
 .labs-note { padding-top: 12px; border-top: 1px solid var(--line-soft); font-size: 14px; }
 
+/* the science experiment invitations */
+.science-nav { color: var(--banana) !important; text-decoration: none; }
+.science-teaser {
+  width: min(100%, 610px); margin: 28px auto 0; padding: 11px 13px; display: grid;
+  grid-template-columns: 68px minmax(0, 1fr) auto; align-items: center; gap: 14px;
+  color: var(--cream); text-decoration: none; text-align: left; border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--raised) 78%, transparent); border-radius: 16px;
+  transition: transform .2s, border-color .2s, background .2s;
+}
+.science-teaser:hover { transform: translateY(-2px); border-color: var(--lamp); background: var(--raised); }
+.science-teaser > span:nth-child(2) { display: flex; flex-direction: column; gap: 2px; }
+.science-teaser strong { font-size: 15px; }
+.science-teaser small { color: var(--cream-faint); font-size: 13px; }
+.science-arrow { color: var(--banana); font-size: 20px; }
+.science-mini-stack { position: relative; display: block; width: 64px; height: 43px; }
+.science-mini-stack i { position: absolute; width: 34px; height: 40px; border: 2px solid var(--ground); border-radius: 5px; background: var(--cream); box-shadow: 0 4px 12px rgba(0,0,0,.3); }
+.science-mini-stack i:first-child { left: 5px; transform: rotate(-9deg); background: var(--plum); }
+.science-mini-stack i:nth-child(2) { right: 5px; transform: rotate(8deg); background: var(--banana); }
+.science-mini-stack b { position: absolute; z-index: 2; left: 10px; bottom: -4px; font: 8px 'JetBrains Mono Variable', monospace; color: var(--cream); background: var(--ground); padding: 2px 4px; border-radius: 4px; white-space: nowrap; }
+.result-science { grid-column: 1; position: relative; display: grid; gap: 3px; padding: 16px 48px 16px 18px; color: var(--cream); text-decoration: none; border: 1px solid var(--line); border-radius: 14px; background: linear-gradient(120deg, rgba(255,190,71,.09), rgba(128,74,127,.1)); }
+.result-science:hover { border-color: var(--lamp); }
+.result-science .who { color: var(--lamp); font-size: 10px; letter-spacing: .14em; font-weight: 700; }
+.result-science strong { font: 600 21px 'Fraunces Variable', serif; }
+.result-science small { color: var(--cream-muted); font-size: 13px; }
+.result-science > b { position: absolute; right: 18px; top: 50%; transform: translateY(-50%); color: var(--banana); }
+@media (max-width: 560px) {
+  .science-nav { display: none; }
+  .science-teaser { grid-template-columns: 54px minmax(0,1fr) auto; gap: 9px; margin-top: 20px; }
+  .science-mini-stack { transform: scale(.8); transform-origin: left center; width: 48px; }
+  .result-science { grid-column: 1; }
+}
+
 /* toast + dialog */
 .toast { position: fixed; left: 50%; bottom: 28px; transform: translate(-50%, 20px); opacity: 0; background: var(--cream); color: var(--ground); padding: 10px 16px; border-radius: 10px; font-weight: 600; font-size: 14px; z-index: 30; transition: transform 0.3s, opacity 0.3s; box-shadow: 0 10px 30px rgba(0,0,0,0.5); max-width: 90vw; }
 .toast.in { transform: translate(-50%, 0); opacity: 1; }

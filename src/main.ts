@@ -49,6 +49,7 @@ app.innerHTML = `
     </div>
     <nav class="top-nav">
       <span class="live" id="live" title="The eye is running in a Web Worker in this tab"><i></i><b id="liveSpikes">0</b> spikes / 60 ms</span>
+      <a class="text-button science-nav" href="/science">Human experiment</a>
       <button type="button" class="text-button" id="aboutButton">How it works</button>
     </nav>
   </header>
@@ -65,6 +66,11 @@ app.innerHTML = `
         <button type="submit" class="go" id="go"><span class="long">Release the fly</span><span class="short">Go</span></button>
       </form>
       <p class="hero-foot" id="heroFoot"><label class="text-button" for="filePick">or drop a screenshot<input class="hidden-input" type="file" id="filePick" accept="image/*"></label><span class="sep">·</span>Only the address leaves your browser. The fly runs here.</p>
+      <a class="science-teaser" href="/science" aria-label="Join the human versus fly science experiment">
+        <span class="science-mini-stack" aria-hidden="true"><i></i><i></i><b>← or →</b></span>
+        <span><strong>Would you pick the same page as a fly?</strong><small>Join the 5-click human experiment</small></span>
+        <b class="science-arrow">→</b>
+      </a>
     </div>
 
     <div class="show" id="show" hidden>
@@ -93,6 +99,7 @@ app.innerHTML = `
         <button type="button" class="primary-button share-button" id="shareButton">${ICON.share}<span>Share the card</span></button>
         <div class="folds" id="foldPicker" hidden></div>
       </div>
+      <a class="result-science" id="resultScience" href="/science"><span class="who">NEXT EXPERIMENT</span><strong>Now judge like a human</strong><small>Five quick choices reveal whether your taste agrees with the fly.</small><b>Start →</b></a>
       <details class="transcript" id="transcriptBox"><summary>Everything the fly said</summary><ol id="transcript"></ol></details>
       <button type="button" class="text-button again" id="againButton">Try another page</button>
     </div>
@@ -392,6 +399,8 @@ function showResult(): void {
   $('parts').innerHTML = s.parts.map((p, i) => `<li style="--d:${i * 90}ms"><div class="head"><b>${p.label}</b><span class="q">${p.question}</span></div><div class="bar"><i style="width:${p.score}%" class="${p.score >= 50 ? 'good' : 'bad'}"></i></div><div class="nums"><span class="mono val">${escapeHtml(p.value)}</span><span class="mono pts">${p.score}<small>/100 · ×${p.weight}</small></span></div></li>`).join('');
   const pageMetrics = narrator.metrics.page!;
   lastCard = { image: current.folds[0], host: current.host, score: s, heat: heats.get(1) ?? null, landing: pageMetrics.landing ? { u: pageMetrics.landing.u, v: pageMetrics.landing.v } : null, appHost: APP_HOST, scroll: scroll && scroll.total > 1 ? { best: scroll.best, total: scroll.total } : null };
+  const scienceQuery = new URLSearchParams({ from: current.host, fly: String(s.total) });
+  $<HTMLAnchorElement>('resultScience').href = `/science?${scienceQuery}`;
   cardCanvas = null;
   void makeCard();
   setTimeout(() => $('result').scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 600);

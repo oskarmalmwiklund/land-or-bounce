@@ -46,6 +46,15 @@ footer and "How it works" say so in words; `LABS.md` has the badge for other exp
    browser allows it. Plain links get the house preview, `public/og.png`, rendered from
    `scripts/og.html`.
 
+### Human vs fly experiment
+
+`/science` is a five-choice companion experience: visitors pick which of two landing pages
+grabs them, immediately see whether the fly chose the same page, and finish with their personal
+agreement rate. The home page and every completed fly verdict lead into it. The initial pool is
+seeded in `src/science.ts` and saves completed sessions locally; it is intentionally shaped so a
+database-backed pool of submitted screenshots and anonymous pairwise votes can replace the seed
+data without changing the interaction.
+
 ## How the score is built
 
 Every part is a curve over something the eye produced (`src/judge/score.ts`). The total is a

@@ -2,7 +2,7 @@
  * GET /api/capture?url=https://example.com
  *
  * Screenshots a landing page at 1440x810 (16:9, the fly's screen shape) with a headless
- * Chromium, one viewport per fold, scrolling between shots (`folds`, default 3, max 4), and
+ * Chromium, one viewport per fold, scrolling between shots (`folds`, default 1, max 4), and
  * returns them as JPEG data URLs plus the final URL and title.
  * Runs on Vercel with @sparticuz/chromium and locally with the machine's Chrome
  * (`CHROME_PATH`, or the macOS default). Written against Node's http types only, so the
@@ -18,9 +18,11 @@ import type { Browser } from 'puppeteer-core';
 
 export const WIDTH = 1440;
 export const HEIGHT = 810;
-const NAV_TIMEOUT_MS = 20_000;
-const SETTLE_MS = 900;
-const FOLD_SETTLE_MS = 450;
+const NAV_TIMEOUT_MS = 14_000;
+const CAPTURE_DEADLINE_MS = 45_000;
+const RESPONSE_DEADLINE_MS = 42_000;
+const SETTLE_MS = 650;
+const FOLD_SETTLE_MS = 300;
 export const MAX_FOLDS = 4;
 
 const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36';
@@ -94,6 +96,11 @@ export async function capture(raw: string, folds = 3): Promise<Capture> {
   const url = normaliseUrl(raw);
   await assertPublicHost(url.hostname);
   const browser = await launch();
+  let deadlineReached = false;
+  const deadline = setTimeout(() => {
+    deadlineReached = true;
+    void browser.close();
+  }, CAPTURE_DEADLINE_MS);
   try {
     const page = await browser.newPage();
     await page.setViewport({ width: WIDTH, height: HEIGHT, deviceScaleFactor: 1 });
@@ -108,6 +115,7 @@ export async function capture(raw: string, folds = 3): Promise<Capture> {
         const h = u.hostname.replace(/^\[|\]$/g, '').toLowerCase();
         ok = (u.protocol === 'http:' || u.protocol === 'https:' || u.protocol === 'data:' || u.protocol === 'blob:')
           && h !== 'localhost' && !(isIP(h) && isPrivateIp(h)) && !h.endsWith('.internal') && !h.endsWith('.local');
+        if (req.resourceType() === 'media') ok = false;
       } catch { ok = false; }
       void (ok ? req.continue() : req.abort('blockedbyclient'));
     });
@@ -123,7 +131,7 @@ export async function capture(raw: string, folds = 3): Promise<Capture> {
     }
     if (response && response.status() >= 400) throw new CaptureError(502, `${url.hostname} answered ${response.status()}.`, 'Drop a screenshot and I will judge that.');
     // Let the network go quiet for a moment if it will, then give fonts and entrance animations a beat.
-    await Promise.race([page.waitForNetworkIdle({ idleTime: 400, timeout: 6000 }).catch(() => undefined), new Promise((r) => setTimeout(r, 6000))]);
+    await Promise.race([page.waitForNetworkIdle({ idleTime: 350, timeout: 3500 }).catch(() => undefined), new Promise((r) => setTimeout(r, 3500))]);
     await new Promise((r) => setTimeout(r, SETTLE_MS));
     const finalUrl = page.url();
     try { await assertPublicHost(new URL(finalUrl).hostname); } catch { throw new CaptureError(400, 'That address led somewhere I will not go.'); }
@@ -144,7 +152,11 @@ export async function capture(raw: string, folds = 3): Promise<Capture> {
       images.push(await shot(y));
     }
     return { url: url.href, finalUrl, title, image: images[0], folds: images, pageHeight, width: WIDTH, height: HEIGHT, ms: Date.now() - t0 };
+  } catch (error) {
+    if (deadlineReached) throw new CaptureError(504, `${url.hostname} took too long to capture.`, 'Try again, or drop a screenshot.');
+    throw error;
   } finally {
+    clearTimeout(deadline);
     await browser.close().catch(() => undefined);
   }
 }
@@ -160,9 +172,12 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
   if (req.method !== 'GET') { json(res, 405, { error: 'GET only' }); return; }
   const q = new URL(req.url ?? '/', 'http://x').searchParams;
   const raw = q.get('url') ?? '';
-  const folds = Number(q.get('folds') ?? 3);
+  const folds = Number(q.get('folds') ?? 1);
   try {
-    const result = await capture(raw, Number.isFinite(folds) ? folds : 3);
+    const result = await Promise.race([
+      capture(raw, Number.isFinite(folds) ? folds : 1),
+      new Promise<never>((_, reject) => setTimeout(() => reject(new CaptureError(504, 'That page took too long to capture.', 'Try again, or drop a screenshot.')), RESPONSE_DEADLINE_MS)),
+    ]);
     json(res, 200, result, 'public, s-maxage=900, stale-while-revalidate=3600');
   } catch (err) {
     if (err instanceof CaptureError) { json(res, err.status, { error: err.message, hint: err.hint }, 'no-store'); return; }

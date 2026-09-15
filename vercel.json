@@ -7,7 +7,8 @@
     "api/capture.ts": { "maxDuration": 60 }
   },
   "rewrites": [
-    { "source": "/verdict", "destination": "/api/page" }
+    { "source": "/verdict", "destination": "/api/page" },
+    { "source": "/science", "destination": "/index.html" }
   ],
   "headers": [
     { "source": "/data/(.*)", "headers": [{ "key": "Cache-Control", "value": "public, max-age=86400, immutable" }] },

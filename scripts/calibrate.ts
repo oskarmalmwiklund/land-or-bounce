@@ -119,7 +119,7 @@ function run(name: string, frame: Uint8ClampedArray): Record<string, unknown> {
       quiet: +p.quietFraction.toFixed(3), colourRatio: +s.colourRatio.toFixed(3), hot: +p.hotFraction.toFixed(3), peak: +p.peakRatio.toFixed(2), left: +p.leftShare.toFixed(2),
       hold: +p.hold.toFixed(3), top: +p.topShare.toFixed(2), bmg: +p.blueMinusGreen.toFixed(1), recHz: +p.receptorHz.toFixed(1),
       landing: p.landing ? `${p.landing.u.toFixed(2)},${p.landing.v.toFixed(2)} @${p.landing.strength.toFixed(0)}` : '-',
-      parts: s.parts.map((x) => `${x.key}:${x.score}`).join(' '), total: s.total, kernelMs: Math.round(performance.now() - t0),
+      parts: s.parts.map((x) => `${x.key}:${x.score}`).join(' '), total: s.total, rawMetrics: ms, kernelMs: Math.round(performance.now() - t0),
     };
     console.log(JSON.stringify(row));
     return row;

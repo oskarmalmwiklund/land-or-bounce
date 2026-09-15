@@ -70,11 +70,14 @@ export async function migrateScience(): Promise<void> {
   )`;
   await sql`CREATE TABLE IF NOT EXISTS science_sessions (
     id uuid PRIMARY KEY,
+    participant_id uuid,
     prompt_version text NOT NULL,
     viewport_class text NOT NULL,
     started_at timestamptz NOT NULL DEFAULT now(),
     completed_at timestamptz
   )`;
+  await sql`ALTER TABLE science_sessions ADD COLUMN IF NOT EXISTS participant_id uuid`;
+  await sql`CREATE UNIQUE INDEX IF NOT EXISTS science_sessions_participant_prompt_idx ON science_sessions (participant_id, prompt_version) WHERE participant_id IS NOT NULL`;
   await sql`CREATE TABLE IF NOT EXISTS science_comparisons (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     session_id uuid NOT NULL REFERENCES science_sessions(id) ON DELETE CASCADE,

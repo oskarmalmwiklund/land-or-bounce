@@ -1,9 +1,19 @@
 const ACTIVE_MS = 180_000;
 const REFRESH_MS = 30_000;
 const VISIT_KEY = 'land-or-bounce-visit';
+const PARTICIPANT_KEY = 'land-or-bounce-participant';
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+export function anonymousParticipantId(): string {
+  try {
+    const saved = localStorage.getItem(PARTICIPANT_KEY);
+    if (saved && UUID.test(saved)) return saved;
+    const id = crypto.randomUUID(); localStorage.setItem(PARTICIPANT_KEY, id); return id;
+  } catch { return crypto.randomUUID(); }
+}
 
 export function activityMarkup(): string {
-  return `<div class="activity-bar" data-activity hidden><span class="activity-now" title="Anonymous browser visits active in the last 90 seconds"><i aria-hidden="true"></i><strong data-active-visits></strong></span><span class="activity-divider" aria-hidden="true">·</span><span data-completed-experiments title="Saved five-choice runs. Repeat runs count separately."></span></div>`;
+  return `<div class="activity-bar" data-activity hidden><span class="activity-now" title="Anonymous browser visits active in the last 90 seconds"><i aria-hidden="true"></i><strong data-active-visits></strong></span><span class="activity-divider" aria-hidden="true">·</span><span data-completed-experiments title="One saved five-choice run per anonymous browser participant."></span></div>`;
 }
 
 /** A short-lived identifier shared across tabs; no URLs, IPs or user agents are stored. */

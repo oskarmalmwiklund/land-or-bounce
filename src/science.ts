@@ -6,9 +6,11 @@ import './science.css';
 import { labsBadge } from './labs/badge';
 import { applyPalette } from './theme/palette';
 import { inject } from '@vercel/analytics';
-import { activityMarkup, startActivity } from './activity';
+import { activityMarkup, anonymousParticipantId, startActivity } from './activity';
 
 applyPalette(document.documentElement.style);
+
+const SHARE_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" d="M12 3v12m0-12 4 4m-4-4L8 7M5 13v6a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-6"/></svg>';
 
 type Candidate = {
   id: string;
@@ -78,9 +80,9 @@ app.innerHTML = `
     <h1 id="agreementTitle">You and the fly see eye to eye.</h1>
     <p id="agreementCopy"></p>
     <div class="science-share-card" id="scienceSharePreview"><span>LAND OR BOUNCE · SCIENCE</span><strong><b id="shareAgreement">0%</b> fly match</strong><small id="shareLine">I made five gut decisions. The fly had opinions.</small><em>Would your eyes agree? →</em></div>
-    <div class="finish-actions"><button class="primary-button" id="shareScience" disabled>Preparing share card…</button><a class="secondary-button" href="/">Test your own page</a><button class="secondary-button" id="againScience">Play again</button></div>
+    <div class="finish-actions"><button class="primary-button share-button" id="shareScience" disabled>${SHARE_ICON}<span id="shareScienceText">Preparing card…</span></button><a class="secondary-button" href="/">Test your own page</a><button class="secondary-button" id="againScience">Play again</button></div>
     ${activityMarkup()}
-    <p class="science-note">Your anonymous choices contribute to the research dataset. Completed five-choice runs are included in the participation count.</p>
+    <p class="science-note">Your first anonymous five-choice run counts in the dataset. You can replay, but repeat choices from this browser do not add more votes.</p>
   </section>
   <footer class="foot science-foot"><span>A playful study of pre-attentive salience. Model activity, not fly behaviour.</span><span>A <a href="https://multiply.co" target="_blank" rel="noopener">Multiply</a> experiment.</span></footer>
 </main>`;
@@ -92,6 +94,7 @@ let agreements = 0;
 let locked = false;
 let currentPair: Pair = pairs[0];
 let sessionId = crypto.randomUUID();
+const participantId = anonymousParticipantId();
 let usedCategories = new Set<string>();
 let roundStarted = performance.now();
 const GLANCE_MS = 5000;
@@ -185,7 +188,7 @@ function choose(side: 'left' | 'right'): void {
   reveal.hidden = false;
   $('progress').style.width = `${(round + 1) * 20}%`;
   if (pair.live && pair.left.captureId && pair.right.captureId && human.captureId && fly.captureId) {
-    void fetch('/api/science-vote', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sessionId, leftId: pair.left.captureId, rightId: pair.right.captureId, chosenId: human.captureId, flyChoiceId: fly.captureId, responseMs: Math.round(performance.now() - roundStarted), round: round + 1, viewport: innerWidth < 700 ? 'mobile' : 'desktop', completed: round === pairs.length - 1 }) }).then((response) => { if (response.ok) void refreshActivity(); }).catch(() => {});
+    void fetch('/api/science-vote', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sessionId, participantId, leftId: pair.left.captureId, rightId: pair.right.captureId, chosenId: human.captureId, flyChoiceId: fly.captureId, responseMs: Math.round(performance.now() - roundStarted), round: round + 1, viewport: innerWidth < 700 ? 'mobile' : 'desktop', completed: round === pairs.length - 1 }) }).then((response) => { if (response.ok) void refreshActivity(); }).catch(() => {});
   }
   advanceTimer = window.setTimeout(next, REVEAL_MS);
 }
@@ -235,7 +238,7 @@ function renderScienceCard(pct: number): HTMLCanvasElement {
 }
 
 async function prepareScienceShare(pct: number): Promise<void> {
-  const button = $<HTMLButtonElement>('shareScience'); button.disabled = true; button.textContent = 'Preparing share card…';
+  const button = $<HTMLButtonElement>('shareScience'); button.disabled = true; $('shareScienceText').textContent = 'Preparing card…';
   scienceShareLink = `${location.origin}/science`;
   try {
     const canvas = renderScienceCard(pct);
@@ -248,7 +251,7 @@ async function prepareScienceShare(pct: number): Promise<void> {
       }
     }
   } catch { /* sharing still works with the experiment's regular preview */ }
-  button.disabled = false; button.textContent = 'Share your result';
+  button.disabled = false; $('shareScienceText').textContent = 'Share the card';
 }
 
 function shareScience(): void {

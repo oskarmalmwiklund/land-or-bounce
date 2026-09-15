@@ -14,15 +14,18 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
   if (!process.env.DATABASE_URL) { reply(res, 503, { error: 'Science storage is not configured.' }); return; }
   try {
     const data = await read(req);
-    const { sessionId, leftId, rightId, chosenId, flyChoiceId } = data;
-    if (![sessionId, leftId, rightId, chosenId, flyChoiceId].every(uuid) || ![leftId, rightId].includes(chosenId as string) || ![leftId, rightId].includes(flyChoiceId as string)) { reply(res, 400, { error: 'Invalid comparison.' }); return; }
+    const { sessionId, participantId, leftId, rightId, chosenId, flyChoiceId } = data;
+    if (![sessionId, participantId, leftId, rightId, chosenId, flyChoiceId].every(uuid) || ![leftId, rightId].includes(chosenId as string) || ![leftId, rightId].includes(flyChoiceId as string)) { reply(res, 400, { error: 'Invalid comparison.' }); return; }
     const responseMs = Math.round(Number(data.responseMs)); const round = Math.round(Number(data.round));
     if (!Number.isFinite(responseMs) || responseMs < 0 || responseMs > 300_000 || !Number.isInteger(round) || round < 1 || round > 100) { reply(res, 400, { error: 'Invalid timing.' }); return; }
     const viewport = ['mobile', 'desktop'].includes(String(data.viewport)) ? String(data.viewport) : 'unknown';
     const sql = db();
-    await sql`INSERT INTO science_sessions (id, prompt_version, viewport_class) VALUES (${sessionId as string}, ${PROMPT_VERSION}, ${viewport}) ON CONFLICT (id) DO NOTHING`;
-    await sql`INSERT INTO science_comparisons (session_id, left_capture_id, right_capture_id, chosen_capture_id, fly_choice_id, response_ms, round_number, prompt_version) VALUES (${sessionId as string}, ${leftId as string}, ${rightId as string}, ${chosenId as string}, ${flyChoiceId as string}, ${responseMs}, ${round}, ${PROMPT_VERSION}) ON CONFLICT (session_id, round_number) DO NOTHING`;
-    if (data.completed === true) await sql`UPDATE science_sessions SET completed_at = now() WHERE id = ${sessionId as string}`;
-    reply(res, 201, { saved: true });
+    const inserted = await sql`INSERT INTO science_sessions (id, participant_id, prompt_version, viewport_class) VALUES (${sessionId as string}, ${participantId as string}, ${PROMPT_VERSION}, ${viewport}) ON CONFLICT (participant_id, prompt_version) WHERE participant_id IS NOT NULL DO NOTHING RETURNING id`;
+    const existing = inserted.length ? inserted : await sql`SELECT id FROM science_sessions WHERE participant_id = ${participantId as string} AND prompt_version = ${PROMPT_VERSION} LIMIT 1`;
+    if (!existing.length) throw new Error('Could not resolve participant session');
+    const savedSessionId = String(existing[0].id);
+    const comparison = await sql`INSERT INTO science_comparisons (session_id, left_capture_id, right_capture_id, chosen_capture_id, fly_choice_id, response_ms, round_number, prompt_version) VALUES (${savedSessionId}, ${leftId as string}, ${rightId as string}, ${chosenId as string}, ${flyChoiceId as string}, ${responseMs}, ${round}, ${PROMPT_VERSION}) ON CONFLICT (session_id, round_number) DO NOTHING RETURNING id`;
+    if (data.completed === true) await sql`UPDATE science_sessions SET completed_at = now() WHERE id = ${savedSessionId}`;
+    reply(res, 201, { saved: comparison.length > 0, repeatParticipant: savedSessionId !== sessionId });
   } catch (error) { console.error('science vote failed', error); reply(res, 500, { error: 'Could not save this choice.' }); }
 }

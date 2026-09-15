@@ -68,8 +68,10 @@ Run `npm run science:migrate` after connecting Neon and pulling Vercel's environ
 The homepage and science page show real activity via `/api/activity`: visible, recently active
 browser visits send a heartbeat every 30 seconds and expire after 90 seconds without one.
 Tabs share a short-lived anonymous visit ID; the server stores only that ID and its last-seen time.
-The science total counts saved sessions with all five choices and a completion timestamp;
-repeat runs count separately. Unavailable counters are hidden. Vercel Analytics continues to
+The science total counts saved sessions with all five choices and a completion timestamp.
+A persistent random participant ID limits each browser to one stored session per prompt version;
+replays remain playable but cannot add duplicate round votes. No account, IP address or user-agent
+fingerprint is stored. Unavailable counters are hidden. Vercel Analytics continues to
 collect dashboard traffic independently; its public query API rounds short time ranges to hours
 and is not used for the “here now” number.
 `npm run science:export` writes an analysis-ready JSON export containing joined captures, fly

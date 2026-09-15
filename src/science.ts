@@ -6,6 +6,7 @@ import './science.css';
 import { labsBadge } from './labs/badge';
 import { applyPalette } from './theme/palette';
 import { inject } from '@vercel/analytics';
+import { activityMarkup, startActivity } from './activity';
 
 applyPalette(document.documentElement.style);
 
@@ -60,6 +61,7 @@ app.innerHTML = `
     ${submitted ? `<p class="science-submitted">Your verdict for <strong>${escapeHtml(submitted)}</strong>${submittedFly ? ` was <b>${escapeHtml(submittedFly)}/100</b>` : ''}. Now be the human in the experiment.</p>` : ''}
     <button class="primary-button science-start" id="scienceStart">Make 5 choices <span>→</span></button>
     <p class="science-time">No signup · about 20 seconds</p>
+    ${activityMarkup()}
     <div class="science-demo" aria-hidden="true"><div class="demo-card demo-a"><span>A</span></div><div class="demo-card demo-b"><span>B</span></div><div class="demo-choice"><b>←</b><span>which one?</span><b>→</b></div></div>
   </section>
   <section class="science-game" id="scienceGame" hidden>
@@ -75,12 +77,14 @@ app.innerHTML = `
     <h1 id="agreementTitle">You and the fly see eye to eye.</h1>
     <p id="agreementCopy"></p>
     <div class="finish-actions"><a class="primary-button" href="/">Test your own page</a><button class="secondary-button" id="againScience">Play again</button></div>
-    <p class="science-note">This demo keeps your choices in this browser. The production study will aggregate anonymous comparisons from submitted sites.</p>
+    ${activityMarkup()}
+    <p class="science-note">Your anonymous choices contribute to the research dataset. Completed five-choice runs are included in the participation count.</p>
   </section>
   <footer class="foot science-foot"><span>A playful study of pre-attentive salience. Model activity, not fly behaviour.</span><span>A <a href="https://multiply.co" target="_blank" rel="noopener">Multiply</a> experiment.</span></footer>
 </main>`;
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
+const refreshActivity = startActivity();
 let round = 0;
 let agreements = 0;
 let locked = false;
@@ -178,7 +182,7 @@ function choose(side: 'left' | 'right'): void {
   reveal.hidden = false;
   $('progress').style.width = `${(round + 1) * 20}%`;
   if (pair.live && pair.left.captureId && pair.right.captureId && human.captureId && fly.captureId) {
-    void fetch('/api/science-vote', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sessionId, leftId: pair.left.captureId, rightId: pair.right.captureId, chosenId: human.captureId, flyChoiceId: fly.captureId, responseMs: Math.round(performance.now() - roundStarted), round: round + 1, viewport: innerWidth < 700 ? 'mobile' : 'desktop', completed: round === pairs.length - 1 }) });
+    void fetch('/api/science-vote', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sessionId, leftId: pair.left.captureId, rightId: pair.right.captureId, chosenId: human.captureId, flyChoiceId: fly.captureId, responseMs: Math.round(performance.now() - roundStarted), round: round + 1, viewport: innerWidth < 700 ? 'mobile' : 'desktop', completed: round === pairs.length - 1 }) }).then((response) => { if (response.ok) void refreshActivity(); }).catch(() => {});
   }
   advanceTimer = window.setTimeout(next, REVEAL_MS);
 }

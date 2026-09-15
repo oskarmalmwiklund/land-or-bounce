@@ -13,6 +13,7 @@ import { Room } from './render/Room';
 import { Screen } from './render/Screen';
 import { applyPalette } from './theme/palette';
 import { inject } from '@vercel/analytics';
+import { activityMarkup, startActivity } from './activity';
 
 applyPalette(document.documentElement.style);
 
@@ -21,7 +22,7 @@ const MAX_ADVANCE_MS = 40;
 const BUDGET_MS = 30;
 const EXPOSURE_MS = 1000;
 const LOOK_SPEED = 0.5;
-const DEFAULT_FOLDS = 3;
+const DEFAULT_FOLDS = 2;
 const APP_HOST = location.host.replace(/^www\./, '') || 'landorbounce.vercel.app';
 
 type State = 'waking' | 'idle' | 'capturing' | 'judging' | 'result' | 'error';
@@ -72,6 +73,7 @@ app.innerHTML = `
         <span><strong>Would you pick the same page as a fly?</strong><small>Join the 5-click science experiment</small></span>
         <b class="science-arrow">→</b>
       </a>
+      ${activityMarkup()}
     </div>
 
     <div class="show" id="show" hidden>
@@ -646,5 +648,6 @@ async function boot(): Promise<void> {
 
 // Inject Vercel Web Analytics
 inject();
+startActivity();
 
 void boot();

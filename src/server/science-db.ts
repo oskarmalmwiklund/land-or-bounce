@@ -27,6 +27,11 @@ export function db() {
 /** Safe to call during deploys and local setup. Production handlers assume this has run. */
 export async function migrateScience(): Promise<void> {
   const sql = db();
+  await sql`CREATE TABLE IF NOT EXISTS site_activity (
+    id uuid PRIMARY KEY,
+    last_seen timestamptz NOT NULL DEFAULT now()
+  )`;
+  await sql`CREATE INDEX IF NOT EXISTS site_activity_seen_idx ON site_activity (last_seen)`;
   await sql`CREATE TABLE IF NOT EXISTS science_sites (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     canonical_url text NOT NULL UNIQUE,

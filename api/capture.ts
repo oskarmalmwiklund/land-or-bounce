@@ -18,9 +18,10 @@ import type { Browser } from 'puppeteer-core';
 
 export const WIDTH = 1440;
 export const HEIGHT = 810;
-const NAV_TIMEOUT_MS = 20_000;
-const SETTLE_MS = 900;
-const FOLD_SETTLE_MS = 450;
+const NAV_TIMEOUT_MS = 14_000;
+const CAPTURE_DEADLINE_MS = 45_000;
+const SETTLE_MS = 650;
+const FOLD_SETTLE_MS = 300;
 export const MAX_FOLDS = 4;
 
 const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36';
@@ -94,6 +95,11 @@ export async function capture(raw: string, folds = 3): Promise<Capture> {
   const url = normaliseUrl(raw);
   await assertPublicHost(url.hostname);
   const browser = await launch();
+  let deadlineReached = false;
+  const deadline = setTimeout(() => {
+    deadlineReached = true;
+    void browser.close();
+  }, CAPTURE_DEADLINE_MS);
   try {
     const page = await browser.newPage();
     await page.setViewport({ width: WIDTH, height: HEIGHT, deviceScaleFactor: 1 });
@@ -108,6 +114,7 @@ export async function capture(raw: string, folds = 3): Promise<Capture> {
         const h = u.hostname.replace(/^\[|\]$/g, '').toLowerCase();
         ok = (u.protocol === 'http:' || u.protocol === 'https:' || u.protocol === 'data:' || u.protocol === 'blob:')
           && h !== 'localhost' && !(isIP(h) && isPrivateIp(h)) && !h.endsWith('.internal') && !h.endsWith('.local');
+        if (req.resourceType() === 'media') ok = false;
       } catch { ok = false; }
       void (ok ? req.continue() : req.abort('blockedbyclient'));
     });
@@ -123,7 +130,7 @@ export async function capture(raw: string, folds = 3): Promise<Capture> {
     }
     if (response && response.status() >= 400) throw new CaptureError(502, `${url.hostname} answered ${response.status()}.`, 'Drop a screenshot and I will judge that.');
     // Let the network go quiet for a moment if it will, then give fonts and entrance animations a beat.
-    await Promise.race([page.waitForNetworkIdle({ idleTime: 400, timeout: 6000 }).catch(() => undefined), new Promise((r) => setTimeout(r, 6000))]);
+    await Promise.race([page.waitForNetworkIdle({ idleTime: 350, timeout: 3500 }).catch(() => undefined), new Promise((r) => setTimeout(r, 3500))]);
     await new Promise((r) => setTimeout(r, SETTLE_MS));
     const finalUrl = page.url();
     try { await assertPublicHost(new URL(finalUrl).hostname); } catch { throw new CaptureError(400, 'That address led somewhere I will not go.'); }
@@ -144,7 +151,11 @@ export async function capture(raw: string, folds = 3): Promise<Capture> {
       images.push(await shot(y));
     }
     return { url: url.href, finalUrl, title, image: images[0], folds: images, pageHeight, width: WIDTH, height: HEIGHT, ms: Date.now() - t0 };
+  } catch (error) {
+    if (deadlineReached) throw new CaptureError(504, `${url.hostname} took too long to capture.`, 'Try again, or drop a screenshot.');
+    throw error;
   } finally {
+    clearTimeout(deadline);
     await browser.close().catch(() => undefined);
   }
 }

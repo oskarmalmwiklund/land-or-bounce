@@ -22,7 +22,7 @@ const MAX_ADVANCE_MS = 40;
 const BUDGET_MS = 30;
 const EXPOSURE_MS = 1000;
 const LOOK_SPEED = 0.5;
-const DEFAULT_FOLDS = 2;
+const DEFAULT_FOLDS = 1;
 const APP_HOST = location.host.replace(/^www\./, '') || 'landorbounce.vercel.app';
 
 type State = 'waking' | 'idle' | 'capturing' | 'judging' | 'result' | 'error';

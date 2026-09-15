@@ -2,7 +2,7 @@
  * GET /api/capture?url=https://example.com
  *
  * Screenshots a landing page at 1440x810 (16:9, the fly's screen shape) with a headless
- * Chromium, one viewport per fold, scrolling between shots (`folds`, default 3, max 4), and
+ * Chromium, one viewport per fold, scrolling between shots (`folds`, default 1, max 4), and
  * returns them as JPEG data URLs plus the final URL and title.
  * Runs on Vercel with @sparticuz/chromium and locally with the machine's Chrome
  * (`CHROME_PATH`, or the macOS default). Written against Node's http types only, so the
@@ -20,6 +20,7 @@ export const WIDTH = 1440;
 export const HEIGHT = 810;
 const NAV_TIMEOUT_MS = 14_000;
 const CAPTURE_DEADLINE_MS = 45_000;
+const RESPONSE_DEADLINE_MS = 42_000;
 const SETTLE_MS = 650;
 const FOLD_SETTLE_MS = 300;
 export const MAX_FOLDS = 4;
@@ -173,7 +174,10 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
   const raw = q.get('url') ?? '';
   const folds = Number(q.get('folds') ?? 3);
   try {
-    const result = await capture(raw, Number.isFinite(folds) ? folds : 3);
+    const result = await Promise.race([
+      capture(raw, Number.isFinite(folds) ? folds : 1),
+      new Promise<never>((_, reject) => setTimeout(() => reject(new CaptureError(504, 'That page took too long to capture.', 'Try again, or drop a screenshot.')), RESPONSE_DEADLINE_MS)),
+    ]);
     json(res, 200, result, 'public, s-maxage=900, stale-while-revalidate=3600');
   } catch (err) {
     if (err instanceof CaptureError) { json(res, err.status, { error: err.message, hint: err.hint }, 'no-store'); return; }

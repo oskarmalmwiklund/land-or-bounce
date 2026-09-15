@@ -88,6 +88,25 @@ let locked = false;
 let currentPair: Pair = pairs[0];
 let sessionId = crypto.randomUUID();
 let roundStarted = performance.now();
+const GLANCE_MS = 5000;
+const REVEAL_MS = 1500;
+let countdownFrame = 0;
+let advanceTimer = 0;
+
+function stopTimers(): void {
+  cancelAnimationFrame(countdownFrame);
+  clearTimeout(advanceTimer);
+}
+
+function startCountdown(): void {
+  const fill = $('glanceTimerFill');
+  const tick = () => {
+    const remaining = Math.max(0, 1 - (performance.now() - roundStarted) / GLANCE_MS);
+    fill.style.transform = `scaleX(${remaining})`;
+    if (remaining > 0 && !locked) countdownFrame = requestAnimationFrame(tick);
+  };
+  tick();
+}
 
 function escapeHtml(value: string): string {
   return value.replace(/[&<>\"]/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '\"': '&quot;' }[char]!));
@@ -114,22 +133,38 @@ async function livePair(): Promise<Pair | null> {
 }
 
 async function showRound(): Promise<void> {
-  locked = false;
+  stopTimers();
+  locked = true;
+  $('reveal').hidden = true;
   $('pair').innerHTML = '<div class="pair-loading">Choosing two pages…</div>';
   currentPair = await livePair() ?? pairs[round];
   const pair = currentPair;
-  roundStarted = performance.now();
   $('roundNum').textContent = String(round + 1);
   $('progress').style.width = `${round * 20}%`;
   $('reveal').hidden = true;
   $('pair').classList.remove('has-pick');
   $('pair').innerHTML = card(pair.left, 'left') + `<span class="versus">OR</span>` + card(pair.right, 'right');
+  let timer = document.getElementById('glanceTimer');
+  if (!timer) {
+    timer = document.createElement('div');
+    timer.id = 'glanceTimer';
+    timer.className = 'glance-timer';
+    timer.setAttribute('aria-hidden', 'true');
+    timer.innerHTML = '<i id="glanceTimerFill"></i>';
+    $('pair').before(timer);
+  }
+  $('glanceTimerFill').style.transform = 'scaleX(1)';
+  await Promise.all(Array.from($('pair').querySelectorAll('img')).map((image) => image.decode().catch(() => {})));
+  roundStarted = performance.now();
+  locked = false;
+  startCountdown();
   $('pair').querySelectorAll<HTMLButtonElement>('.site-choice').forEach((button) => button.addEventListener('click', () => choose(button.dataset.side as 'left' | 'right')));
 }
 
 function choose(side: 'left' | 'right'): void {
   if (locked) return;
   locked = true;
+  cancelAnimationFrame(countdownFrame);
   const pair = currentPair;
   const human = side === 'left' ? pair.left : pair.right;
   const fly = pair.left.fly >= pair.right.fly ? pair.left : pair.right;
@@ -143,17 +178,17 @@ function choose(side: 'left' | 'right'): void {
   const humanPercent = pair.humanLeft == null ? null : side === 'left' ? pair.humanLeft : 100 - pair.humanLeft;
   const reveal = $('reveal');
   reveal.className = `reveal ${agreed ? 'agree' : 'disagree'}`;
-  reveal.innerHTML = `<div><span>${agreed ? 'SAME INSTINCT' : 'SPLIT DECISION'}</span><strong>${agreed ? 'The fly picked it too.' : `The fly picked ${escapeHtml(fly.host)}.`}</strong><small>${humanPercent == null ? 'Your choice is now part of the study.' : `${humanPercent}% of humans picked ${escapeHtml(human.host)} in this demo.`}</small></div><button id="nextRound">${round === pairs.length - 1 ? 'See my result' : 'Next pair'} →</button>`;
+  reveal.innerHTML = `<div><span>${agreed ? 'SAME INSTINCT' : 'SPLIT DECISION'}</span><strong>${agreed ? 'The fly picked it too.' : `The fly picked ${escapeHtml(fly.host)}.`}</strong><small>${humanPercent == null ? 'Your choice is now part of the study.' : `${humanPercent}% of humans picked ${escapeHtml(human.host)} in this demo.`}</small></div><span class="auto-next">${round === pairs.length - 1 ? 'Your result' : 'Next pair'} →</span>`;
   reveal.hidden = false;
   $('progress').style.width = `${(round + 1) * 20}%`;
-  $('nextRound').addEventListener('click', next);
   if (pair.live && pair.left.captureId && pair.right.captureId && human.captureId && fly.captureId) {
     void fetch('/api/science-vote', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sessionId, leftId: pair.left.captureId, rightId: pair.right.captureId, chosenId: human.captureId, flyChoiceId: fly.captureId, responseMs: Math.round(performance.now() - roundStarted), round: round + 1, viewport: innerWidth < 700 ? 'mobile' : 'desktop', completed: round === pairs.length - 1 }) });
   }
-  window.setTimeout(() => $('nextRound').focus(), 100);
+  advanceTimer = window.setTimeout(next, REVEAL_MS);
 }
 
 function next(): void {
+  stopTimers();
   round += 1;
   if (round < pairs.length) { void showRound(); return; }
   localStorage.setItem('land-or-bounce-science', JSON.stringify({ completedAt: Date.now(), agreements, rounds: pairs.length }));
@@ -167,6 +202,7 @@ function next(): void {
 }
 
 function start(): void {
+  stopTimers();
   round = 0; agreements = 0;
   sessionId = crypto.randomUUID();
   $('scienceIntro').hidden = true;

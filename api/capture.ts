@@ -172,7 +172,7 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
   if (req.method !== 'GET') { json(res, 405, { error: 'GET only' }); return; }
   const q = new URL(req.url ?? '/', 'http://x').searchParams;
   const raw = q.get('url') ?? '';
-  const folds = Number(q.get('folds') ?? 3);
+  const folds = Number(q.get('folds') ?? 1);
   try {
     const result = await Promise.race([
       capture(raw, Number.isFinite(folds) ? folds : 1),

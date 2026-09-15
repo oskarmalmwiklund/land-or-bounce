@@ -1,7 +1,7 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { createHash, randomUUID } from 'node:crypto';
 import { put } from '@vercel/blob';
-import { db, SCORING_VERSION, SIMULATOR_VERSION } from '../src/server/science-db';
+import { db, inferCategory, SCORING_VERSION, SIMULATOR_VERSION } from '../src/server/science-db';
 
 const MAX_BODY = 3_500_000;
 const MAX_IMAGE = 2_500_000;
@@ -24,7 +24,7 @@ function bodyOf(req: IncomingMessage): Promise<unknown> {
 
 type Submission = {
   url?: unknown; hostname?: unknown; screenshot?: unknown; width?: unknown; height?: unknown;
-  score?: unknown; metrics?: unknown; consent?: unknown;
+  score?: unknown; metrics?: unknown; consent?: unknown; title?: unknown;
 };
 
 export default async function handler(req: IncomingMessage, res: ServerResponse): Promise<void> {
@@ -48,16 +48,18 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
     const width = Math.max(1, Math.min(4000, Number(input.width) || 1440));
     const height = Math.max(1, Math.min(4000, Number(input.height) || 810));
     const hash = createHash('sha256').update(image).digest('hex');
+    const title = typeof input.title === 'string' ? input.title.slice(0, 200) : '';
+    const category = inferCategory(input.hostname, title);
     const sql = db();
     const existing = await sql`SELECT c.id FROM science_captures c WHERE c.screenshot_hash = ${hash} LIMIT 1`;
     if (existing.length) { reply(res, 200, { id: existing[0].id, duplicate: true }); return; }
     const imageId = randomUUID();
     const blob = await put(`science/screenshots/${imageId}.jpg`, image, { access: 'public', contentType: 'image/jpeg', addRandomSuffix: false, cacheControlMaxAge: 60 * 60 * 24 * 365 });
-    const siteRows = await sql`INSERT INTO science_sites (canonical_url, hostname) VALUES (${parsed.href}, ${input.hostname}) ON CONFLICT (canonical_url) DO UPDATE SET hostname = EXCLUDED.hostname RETURNING id`;
+    const siteRows = await sql`INSERT INTO science_sites (canonical_url, hostname, page_title, category) VALUES (${parsed.href}, ${input.hostname}, ${title}, ${category}) ON CONFLICT (canonical_url) DO UPDATE SET hostname = EXCLUDED.hostname, page_title = EXCLUDED.page_title, category = EXCLUDED.category RETURNING id`;
     const captureRows = await sql`INSERT INTO science_captures (site_id, screenshot_url, screenshot_hash, viewport_width, viewport_height, consented_for_science) VALUES (${siteRows[0].id}, ${blob.url}, ${hash}, ${width}, ${height}, true) RETURNING id`;
     const captureId = captureRows[0].id;
     await sql`INSERT INTO science_fly_runs (capture_id, total_score, notice, landing_spot, calm, balance, colour, raw_metrics, simulator_version, scoring_version) VALUES (${captureId}, ${score.total as number}, ${parts[0]}, ${parts[1]}, ${parts[2]}, ${parts[3]}, ${parts[4]}, ${JSON.stringify(input.metrics ?? {})}::jsonb, ${SIMULATOR_VERSION}, ${SCORING_VERSION})`;
-    reply(res, 201, { id: captureId });
+    reply(res, 201, { id: captureId, category });
   } catch (error) {
     console.error('science submission failed', error);
     reply(res, error instanceof Error && error.message === 'too-large' ? 413 : 500, { error: 'Could not add this page to the experiment.' });

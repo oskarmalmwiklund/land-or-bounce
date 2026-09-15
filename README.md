@@ -56,6 +56,12 @@ invite visitors to participate. Dropped screenshots remain local. Website screen
 site metadata, versioned fly runs, anonymous sessions and pairwise votes live in Neon Postgres.
 The seeded pool in `src/science.ts` remains as a fallback until two live submissions exist.
 
+The live pool starts with four matched categories: Lovable/Bolt (AI builders), Stripe/Mollie
+(payments), Linear/Notion (productivity), and Shopify/Gumroad (commerce). New submissions are
+classified from their hostname and page title. Pair selection samples only categories containing
+at least two pages, so a new page waits until it has a meaningful counterpart instead of being
+forced into an unrelated comparison.
+
 Run `npm run science:migrate` after connecting Neon and pulling Vercel's environment variables.
 `npm run science:export` writes an analysis-ready JSON export containing joined captures, fly
 scores, raw measurements and comparison events.

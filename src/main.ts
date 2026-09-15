@@ -165,7 +165,7 @@ app.innerHTML = `
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 const page = $('page'), roomCanvas = $<HTMLCanvasElement>('room'), screenCanvas = $<HTMLCanvasElement>('screen'), screenFrame = $('screenFrame');
 
-interface Current { host: string; url: string | null; folds: HTMLImageElement[] }
+interface Current { host: string; url: string | null; title: string; folds: HTMLImageElement[] }
 
 let circuit: Circuit;
 let screen: Screen;
@@ -250,7 +250,7 @@ async function judgeUrl(raw: string): Promise<void> {
     const srcs: string[] = Array.isArray(body.folds) && body.folds.length ? body.folds : [body.image];
     const folds = await Promise.all(srcs.map(loadImage));
     const host = hostOf(body.finalUrl || body.url);
-    current = { host, url: body.finalUrl || body.url, folds };
+    current = { host, url: body.finalUrl || body.url, title: body.title || '', folds };
     const q = new URLSearchParams(); q.set('site', host === hostOf(`https://${typed}`) ? typed : body.finalUrl); if (foldsWanted() !== DEFAULT_FOLDS) q.set('folds', String(foldsWanted()));
     history.replaceState(null, '', `/?${q}`);
     document.title = `${host} · Land or Bounce`;
@@ -274,7 +274,7 @@ async function judgeFile(file: File): Promise<void> {
     const url = URL.createObjectURL(file);
     const image = await loadImage(url);
     const host = file.name.replace(/\.[a-z0-9]+$/i, '').slice(0, 40) || 'your screenshot';
-    current = { host, url: null, folds: [image] };
+    current = { host, url: null, title: '', folds: [image] };
     history.replaceState(null, '', '/');
     document.title = `${host} · Land or Bounce`;
     await startJudge();
@@ -595,7 +595,7 @@ async function contributeToScience(): Promise<void> {
     const screenshot = canvas.toDataURL('image/jpeg', 0.82);
     const response = await fetch('/api/science-submit', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ url: current.url, hostname: current.host, screenshot, width: canvas.width, height: canvas.height, score: lastScore, metrics: narrator.metrics, consent: true }),
+      body: JSON.stringify({ url: current.url, hostname: current.host, title: current.title, screenshot, width: canvas.width, height: canvas.height, score: lastScore, metrics: narrator.metrics, consent: true }),
     });
     const result = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(result.error || 'Could not save the page.');

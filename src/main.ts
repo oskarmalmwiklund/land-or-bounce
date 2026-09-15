@@ -49,7 +49,7 @@ app.innerHTML = `
     </div>
     <nav class="top-nav">
       <span class="live" id="live" title="The eye is running in a Web Worker in this tab"><i></i><b id="liveSpikes">0</b> spikes / 60 ms</span>
-      <a class="text-button science-nav" href="/science">Human experiment</a>
+      <a class="text-button science-nav" href="/science">Science experiment</a>
       <button type="button" class="text-button" id="aboutButton">How it works</button>
     </nav>
   </header>
@@ -68,7 +68,7 @@ app.innerHTML = `
       <p class="hero-foot" id="heroFoot"><label class="text-button" for="filePick">or drop a screenshot<input class="hidden-input" type="file" id="filePick" accept="image/*"></label><span class="sep">·</span>Only the address leaves your browser. The fly runs here.</p>
       <a class="science-teaser" href="/science" aria-label="Join the human versus fly science experiment">
         <span class="science-mini-stack" aria-hidden="true"><i></i><i></i><b>← or →</b></span>
-        <span><strong>Would you pick the same page as a fly?</strong><small>Join the 5-click human experiment</small></span>
+        <span><strong>Would you pick the same page as a fly?</strong><small>Join the 5-click science experiment</small></span>
         <b class="science-arrow">→</b>
       </a>
     </div>

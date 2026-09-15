@@ -1,7 +1,7 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { createHash, randomUUID } from 'node:crypto';
 import { put } from '@vercel/blob';
-import { db, inferCategory, SCORING_VERSION, SIMULATOR_VERSION } from '../src/server/science-db';
+import { db, inferCategory, SCORING_VERSION, SIMULATOR_VERSION } from '../src/server/science-db.js';
 
 const MAX_BODY = 3_500_000;
 const MAX_IMAGE = 2_500_000;

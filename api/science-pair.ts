@@ -1,5 +1,5 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
-import { db } from '../src/server/science-db';
+import { db } from '../src/server/science-db.js';
 
 function reply(res: ServerResponse, status: number, body: unknown): void {
   res.statusCode = status; res.setHeader('Content-Type', 'application/json; charset=utf-8'); res.setHeader('Cache-Control', 'no-store'); res.end(JSON.stringify(body));

@@ -59,12 +59,18 @@ site metadata, versioned fly runs, anonymous sessions and pairwise votes live in
 The seeded pool in `src/science.ts` is also the browser fallback, so the experiment always shows
 real captured pages if the database is unavailable.
 
-The live pool starts with five matched categories: Lovable/Bolt (AI builders), Stripe/Mollie
+The pool was seeded with five matched pairs: Lovable/Bolt (AI builders), Stripe/Mollie
 (payments), Linear/Notion (productivity), Shopify/Gumroad (commerce), and Mailchimp/Beehiiv
-(marketing). Each five-choice session samples each category once. New submissions are
-classified from their hostname and page title. Pair selection samples only categories containing
-at least two pages, so a new page waits until it has a meaningful counterpart instead of being
-forced into an unrelated comparison.
+(marketing). Pages that arrive through the verdict tool are classified from their hostname and
+page title by `inferCategory` in `src/server/science-db.ts`: ordered keyword rules plus a short
+list of host overrides for titles that say nothing, covering AI builders, payments, productivity,
+commerce, marketing, dev tools, security, consulting, media, portfolios, health, local services,
+consumer apps, software, agencies and other. `src/server/science-db.test.ts` pins every host in
+the pool to its category. Each five-choice session samples a category at most once, and pair
+selection draws only from categories with at least two hosts, so a new page waits until it has a
+meaningful counterpart instead of being forced into an unrelated comparison. When the rules
+change, `npm run science:recategorize` previews the reclassification of the live pool and
+`--apply` writes it; `--retire host,host` pulls broken captures out of new pairs.
 
 Run `npm run science:migrate` after connecting Neon and pulling Vercel's environment variables.
 The homepage and science page show real activity via `/api/activity`: visible, recently active

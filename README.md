@@ -74,8 +74,17 @@ replays remain playable but cannot add duplicate round votes. No account, IP add
 fingerprint is stored. Unavailable counters are hidden. Vercel Analytics continues to
 collect dashboard traffic independently; its public query API rounds short time ranges to hours
 and is not used for the “here now” number.
-`npm run science:export` writes an analysis-ready JSON export containing joined captures, fly
-scores, raw measurements and comparison events.
+Querying the data: Vercel gives each environment its own Neon branch, so pull the production
+file once with `vercel env pull .env.production.local --environment production --yes` (it is
+gitignored). The analysis scripts read it by default and take `--env development` for the
+local branch. `npm run science:snapshot` prints the whole experiment as tables: agreement
+overall and by round, category, viewport, fly score gap and decision time, every pair, every
+site, participants, votes per hour, pool health, and how many legacy sessions without a
+participant id were left out (`--include-legacy` keeps them, `--section pairs,sites` picks
+sections, `--json` gives one object). `npm run science:sql -- "select ..."` runs one
+statement and prints a table, `--csv` or `--json`; tables are listed in
+`src/server/science-db.ts`. `npm run science:export` writes an analysis-ready JSON export
+containing joined captures, fly scores, raw measurements and comparison events.
 
 ## How the score is built
 

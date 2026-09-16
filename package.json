@@ -14,8 +14,10 @@
     "bench": "node --import tsx scripts/bench.ts",
     "calibrate": "node --import tsx scripts/calibrate.ts",
     "science:migrate": "node --env-file-if-exists=.env.local --import tsx scripts/science-db.ts",
-    "science:export": "node --env-file-if-exists=.env.local --import tsx scripts/export-science.ts",
-    "science:seed": "node --env-file-if-exists=.env.local --import tsx scripts/import-science-seeds.ts"
+    "science:export": "node --import tsx scripts/export-science.ts",
+    "science:seed": "node --env-file-if-exists=.env.local --import tsx scripts/import-science-seeds.ts",
+    "science:snapshot": "node --import tsx scripts/science-snapshot.ts",
+    "science:sql": "node --import tsx scripts/science-sql.ts"
   },
   "dependencies": {
     "@fontsource-variable/familjen-grotesk": "^5.3.0",

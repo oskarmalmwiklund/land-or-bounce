@@ -12,12 +12,18 @@
     "preview": "vite preview --host 127.0.0.1",
     "test": "vitest run",
     "bench": "node --import tsx scripts/bench.ts",
-    "calibrate": "node --import tsx scripts/calibrate.ts"
+    "calibrate": "node --import tsx scripts/calibrate.ts",
+    "science:migrate": "node --env-file-if-exists=.env.local --import tsx scripts/science-db.ts",
+    "science:export": "node --import tsx scripts/export-science.ts",
+    "science:seed": "node --env-file-if-exists=.env.local --import tsx scripts/import-science-seeds.ts",
+    "science:snapshot": "node --import tsx scripts/science-snapshot.ts",
+    "science:sql": "node --import tsx scripts/science-sql.ts"
   },
   "dependencies": {
     "@fontsource-variable/familjen-grotesk": "^5.3.0",
     "@fontsource-variable/fraunces": "^5.3.0",
     "@fontsource-variable/jetbrains-mono": "^5.3.0",
+    "@neondatabase/serverless": "^1.1.0",
     "@sparticuz/chromium": "^153.0.0",
     "@vercel/analytics": "^2.0.1",
     "@vercel/blob": "^2.8.0",

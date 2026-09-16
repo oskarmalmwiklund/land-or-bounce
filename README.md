@@ -46,6 +46,46 @@ footer and "How it works" say so in words; `LABS.md` has the badge for other exp
    browser allows it. Plain links get the house preview, `public/og.png`, rendered from
    `scripts/og.html`.
 
+### Human vs fly experiment
+
+`/science` is a five-choice companion experience: visitors pick which of two landing pages
+grabs them, immediately see whether the fly chose the same page, and finish with their personal
+agreement rate. A notice beside the website form explains that submission consents to inclusion
+in the research dataset and comparison pool. Completed website verdicts save automatically and
+invite visitors to participate. Dropped screenshots remain local. Website screenshots live in Vercel Blob;
+site metadata, versioned fly runs, anonymous sessions and pairwise votes live in Neon Postgres.
+The seeded pool in `src/science.ts` is also the browser fallback, so the experiment always shows
+real captured pages if the database is unavailable.
+
+The live pool starts with five matched categories: Lovable/Bolt (AI builders), Stripe/Mollie
+(payments), Linear/Notion (productivity), Shopify/Gumroad (commerce), and Mailchimp/Beehiiv
+(marketing). Each five-choice session samples each category once. New submissions are
+classified from their hostname and page title. Pair selection samples only categories containing
+at least two pages, so a new page waits until it has a meaningful counterpart instead of being
+forced into an unrelated comparison.
+
+Run `npm run science:migrate` after connecting Neon and pulling Vercel's environment variables.
+The homepage and science page show real activity via `/api/activity`: visible, recently active
+browser visits send a heartbeat every 30 seconds and expire after 90 seconds without one.
+Tabs share a short-lived anonymous visit ID; the server stores only that ID and its last-seen time.
+The science total counts saved sessions with all five choices and a completion timestamp.
+A persistent random participant ID limits each browser to one stored session per prompt version;
+replays remain playable but cannot add duplicate round votes. No account, IP address or user-agent
+fingerprint is stored. Unavailable counters are hidden. Vercel Analytics continues to
+collect dashboard traffic independently; its public query API rounds short time ranges to hours
+and is not used for the “here now” number.
+Querying the data: Vercel gives each environment its own Neon branch, so pull the production
+file once with `vercel env pull .env.production.local --environment production --yes` (it is
+gitignored). The analysis scripts read it by default and take `--env development` for the
+local branch. `npm run science:snapshot` prints the whole experiment as tables: agreement
+overall and by round, category, viewport, fly score gap and decision time, every pair, every
+site, participants, votes per hour, pool health, and how many legacy sessions without a
+participant id were left out (`--include-legacy` keeps them, `--section pairs,sites` picks
+sections, `--json` gives one object). `npm run science:sql -- "select ..."` runs one
+statement and prints a table, `--csv` or `--json`; tables are listed in
+`src/server/science-db.ts`. `npm run science:export` writes an analysis-ready JSON export
+containing joined captures, fly scores, raw measurements and comparison events.
+
 ## How the score is built
 
 Every part is a curve over something the eye produced (`src/judge/score.ts`). The total is a

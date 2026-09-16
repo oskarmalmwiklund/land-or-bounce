@@ -13,6 +13,7 @@ import { Room } from './render/Room';
 import { Screen } from './render/Screen';
 import { applyPalette } from './theme/palette';
 import { inject } from '@vercel/analytics';
+import { activityMarkup, startActivity } from './activity';
 
 applyPalette(document.documentElement.style);
 
@@ -21,7 +22,7 @@ const MAX_ADVANCE_MS = 40;
 const BUDGET_MS = 30;
 const EXPOSURE_MS = 1000;
 const LOOK_SPEED = 0.5;
-const DEFAULT_FOLDS = 3;
+const DEFAULT_FOLDS = 1;
 const APP_HOST = location.host.replace(/^www\./, '') || 'landorbounce.vercel.app';
 
 type State = 'waking' | 'idle' | 'capturing' | 'judging' | 'result' | 'error';
@@ -49,6 +50,7 @@ app.innerHTML = `
     </div>
     <nav class="top-nav">
       <span class="live" id="live" title="The eye is running in a Web Worker in this tab"><i></i><b id="liveSpikes">0</b> spikes / 60 ms</span>
+      <a class="text-button science-nav" href="/science">Science experiment</a>
       <button type="button" class="text-button" id="aboutButton">How it works</button>
     </nav>
   </header>
@@ -64,7 +66,14 @@ app.innerHTML = `
         <input id="url" name="url" type="text" inputmode="url" spellcheck="false" placeholder="yoursite.com" required>
         <button type="submit" class="go" id="go"><span class="long">Release the fly</span><span class="short">Go</span></button>
       </form>
-      <p class="hero-foot" id="heroFoot"><label class="text-button" for="filePick">or drop a screenshot<input class="hidden-input" type="file" id="filePick" accept="image/*"></label><span class="sep">·</span>Only the address leaves your browser. The fly runs here.</p>
+      <p class="dataset-notice">By submitting a website, you agree to add its URL, screenshot and fly measurements to our research dataset. Its screenshot may appear in the <a href="/science">science experiment</a>.</p>
+      <p class="hero-foot" id="heroFoot"><label class="text-button" for="filePick">or drop a screenshot<input class="hidden-input" type="file" id="filePick" accept="image/*"></label><span class="sep">·</span>Dropped screenshots stay in your browser.</p>
+      <a class="science-teaser" href="/science" aria-label="Join the human versus fly science experiment">
+        <span class="science-mini-stack" aria-hidden="true"><i></i><i></i><b>← or →</b></span>
+        <span><strong>Would you pick the same page as a fly?</strong><small>Join the 5-click science experiment</small></span>
+        <b class="science-arrow">→</b>
+      </a>
+      ${activityMarkup()}
     </div>
 
     <div class="show" id="show" hidden>
@@ -93,6 +102,7 @@ app.innerHTML = `
         <button type="button" class="primary-button share-button" id="shareButton">${ICON.share}<span>Share the card</span></button>
         <div class="folds" id="foldPicker" hidden></div>
       </div>
+      <a class="result-science" id="resultScience" href="/science"><span class="who">SCIENCE NEEDS YOUR EYES</span><strong>Would you pick what the fly picks?</strong><small>Five pairs. Five quick choices. Find out where you agree.</small><b>Join the experiment →</b></a>
       <details class="transcript" id="transcriptBox"><summary>Everything the fly said</summary><ol id="transcript"></ol></details>
       <button type="button" class="text-button again" id="againButton">Try another page</button>
     </div>
@@ -157,7 +167,7 @@ app.innerHTML = `
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 const page = $('page'), roomCanvas = $<HTMLCanvasElement>('room'), screenCanvas = $<HTMLCanvasElement>('screen'), screenFrame = $('screenFrame');
 
-interface Current { host: string; url: string | null; folds: HTMLImageElement[] }
+interface Current { host: string; url: string | null; title: string; folds: HTMLImageElement[] }
 
 let circuit: Circuit;
 let screen: Screen;
@@ -242,7 +252,7 @@ async function judgeUrl(raw: string): Promise<void> {
     const srcs: string[] = Array.isArray(body.folds) && body.folds.length ? body.folds : [body.image];
     const folds = await Promise.all(srcs.map(loadImage));
     const host = hostOf(body.finalUrl || body.url);
-    current = { host, url: body.finalUrl || body.url, folds };
+    current = { host, url: body.finalUrl || body.url, title: body.title || '', folds };
     const q = new URLSearchParams(); q.set('site', host === hostOf(`https://${typed}`) ? typed : body.finalUrl); if (foldsWanted() !== DEFAULT_FOLDS) q.set('folds', String(foldsWanted()));
     history.replaceState(null, '', `/?${q}`);
     document.title = `${host} · Land or Bounce`;
@@ -266,7 +276,7 @@ async function judgeFile(file: File): Promise<void> {
     const url = URL.createObjectURL(file);
     const image = await loadImage(url);
     const host = file.name.replace(/\.[a-z0-9]+$/i, '').slice(0, 40) || 'your screenshot';
-    current = { host, url: null, folds: [image] };
+    current = { host, url: null, title: '', folds: [image] };
     history.replaceState(null, '', '/');
     document.title = `${host} · Land or Bounce`;
     await startJudge();
@@ -392,6 +402,8 @@ function showResult(): void {
   $('parts').innerHTML = s.parts.map((p, i) => `<li style="--d:${i * 90}ms"><div class="head"><b>${p.label}</b><span class="q">${p.question}</span></div><div class="bar"><i style="width:${p.score}%" class="${p.score >= 50 ? 'good' : 'bad'}"></i></div><div class="nums"><span class="mono val">${escapeHtml(p.value)}</span><span class="mono pts">${p.score}<small>/100 · ×${p.weight}</small></span></div></li>`).join('');
   const pageMetrics = narrator.metrics.page!;
   lastCard = { image: current.folds[0], host: current.host, score: s, heat: heats.get(1) ?? null, landing: pageMetrics.landing ? { u: pageMetrics.landing.u, v: pageMetrics.landing.v } : null, appHost: APP_HOST, scroll: scroll && scroll.total > 1 ? { best: scroll.best, total: scroll.total } : null };
+  $<HTMLAnchorElement>('resultScience').href = `/science?${new URLSearchParams({ from: current.host, fly: String(s.total) })}`;
+  if (current.url) void contributeToScience();
   cardCanvas = null;
   void makeCard();
   setTimeout(() => $('result').scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 600);
@@ -573,6 +585,27 @@ function goIdle(): void {
   const input = $<HTMLInputElement>('url'); input.value = ''; input.focus();
 }
 
+async function contributeToScience(): Promise<void> {
+  if (!current?.url || !current.folds[0] || !lastScore || !narrator?.metrics) {
+    return;
+  }
+  try {
+    const source = current.folds[0];
+    const canvas = document.createElement('canvas');
+    canvas.width = source.naturalWidth || 1440; canvas.height = source.naturalHeight || 810;
+    canvas.getContext('2d')!.drawImage(source, 0, 0, canvas.width, canvas.height);
+    const screenshot = canvas.toDataURL('image/jpeg', 0.82);
+    const response = await fetch('/api/science-submit', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url: current.url, hostname: current.host, title: current.title, screenshot, width: canvas.width, height: canvas.height, score: lastScore, metrics: narrator.metrics, consent: true }),
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(result.error || 'Could not save the page.');
+  } catch (error) {
+    toast('Your fly verdict is ready, but we could not save it to the research dataset.');
+  }
+}
+
 async function boot(): Promise<void> {
   room = new Room(roomCanvas);
   const fitRoom = () => room.resize(window.innerWidth, window.innerHeight);
@@ -615,5 +648,6 @@ async function boot(): Promise<void> {
 
 // Inject Vercel Web Analytics
 inject();
+startActivity();
 
 void boot();

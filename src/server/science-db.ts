@@ -6,16 +6,49 @@ export const SCORING_VERSION = 'land-or-bounce-v1';
 /** v1 revealed the fly's pick after every round; v2 keeps it sealed until the results screen. */
 export const PROMPT_VERSION = 'grabs-you-v2-blind';
 
+/**
+ * Categories for pairing: two pages are only compared within one category, so every category
+ * needs at least two hosts before its pages are shown. Rules run in order and the first match
+ * wins, so the specific ones come first and the broad software and agency rules last. The
+ * text tested is the hostname with dots and dashes turned to spaces, then the page title.
+ */
 const CATEGORY_RULES: Array<[string, RegExp]> = [
-  ['ai-builder', /\b(ai app|app builder|build apps?|website builder|no.?code|vibe cod|lovable|bolt|v0)\b/i],
+  ['ai-builder', /\b(ai app|app builder|build apps?|website builder|no.?code|vibe cod\w*|lovable|bolt|v0)\b/i],
   ['payments', /\b(payment|payments|financial infrastructure|checkout|billing|fintech|stripe|mollie|adyen)\b/i],
   ['productivity', /\b(project management|workspace|productivity|collaboration|notes|docs|linear|notion|asana)\b/i],
-  ['commerce', /\b(ecommerce|e-commerce|online store|commerce|sell online|shopify|gumroad)\b/i],
-  ['marketing', /\b(marketing|email platform|newsletter|campaign|crm|mailchimp|hubspot)\b/i],
+  ['commerce', /\b(ecommerce|e-commerce|online store|commerce|sell online|shopify|gumroad|home goods|ceramics|accessories|shop|store|merch)\b/i],
+  ['marketing', /\b(marketing|email platform|newsletter|campaign|crm|mailchimp|hubspot|klaviyo|beehiiv)\b/i],
+  ['dev-tools', /\b(github actions|ci\b|cd pipeline|runners?|developer tools?|devtools|sdk|api|checker|compiler|debugger|observability)\b/i],
+  ['security', /surveillance|intrusion|defsec|defen[cs]e|security|threat detection|perimeter/i],
+  ['consulting', /\b(consulting|consultancy|consultants?|advisory|advisors?|audit|strategy|management consulting)\b/i],
+  ['media', /\b(news|nyheter|newspaper|magazine|tidning|podcast|journalism|editorial|media)\b/i],
+  ['portfolio', /\b(portfolio|art direction|motion design|3d design|storyteller|designer|freelance|photographer|illustrator)\b/i],
+  ['health', /\b(health|biology|supplements?|clinic|medical|wellness|fertility|surrogacy|parenthood|föräldraskap|therapy|nutrition)\b/i],
+  ['services', /\b(offert|quote|quotes|plumbing|roofing|insulation|isolering|venue|hotel|breeding|seminar|cleaning|electrician|builder|renovation)\b/i],
+  ['consumer', /\b(language learning|learn \w+|athletes?|fans?|ranking|games?|fitness|travel app|dating|recipes?|streaming)\b/i],
+  ['software', /\b(platform|software|operating system|bi|enterprise|analytics|research|ai-native|saas|automation|infrastructure|cloud|data)\b/i],
+  ['agency', /\b(agency|agencies|studio|web design|webbyrå|byrå|comms|communications|marknadsavdelning|branding|translate|translation|publishing|rights holders)\b/i],
 ];
 
+/**
+ * Hosts whose title says nothing useful. Checked before the rules. Keep this short: it is for
+ * pages already in the pool, not a second classifier.
+ */
+const CATEGORY_OVERRIDES: Record<string, string> = {
+  'aftonbladet.se': 'media',
+  'feber.se': 'media',
+  'google.com': 'consumer',
+  'minpingis.se': 'consumer',
+  'aniara.one': 'agency',
+  'fastest.ee': 'dev-tools',
+};
+
+export const CATEGORIES = [...new Set([...Object.values(CATEGORY_OVERRIDES), ...CATEGORY_RULES.map(([name]) => name), 'other'])];
+
 export function inferCategory(hostname: string, title = ''): string {
-  const text = `${hostname.replace(/[.-]/g, ' ')} ${title}`;
+  const host = hostname.toLowerCase().replace(/^www\./, '');
+  if (CATEGORY_OVERRIDES[host]) return CATEGORY_OVERRIDES[host];
+  const text = `${host.replace(/[.-]/g, ' ')} ${title}`;
   return CATEGORY_RULES.find(([, pattern]) => pattern.test(text))?.[0] ?? 'other';
 }
 

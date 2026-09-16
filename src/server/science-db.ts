@@ -3,7 +3,8 @@ import { neon } from '@neondatabase/serverless';
 export const SCIENCE_SCHEMA_VERSION = '1';
 export const SIMULATOR_VERSION = 'malecns-lamina-v1';
 export const SCORING_VERSION = 'land-or-bounce-v1';
-export const PROMPT_VERSION = 'grabs-you-v1';
+/** v1 revealed the fly's pick after every round; v2 keeps it sealed until the results screen. */
+export const PROMPT_VERSION = 'grabs-you-v2-blind';
 
 const CATEGORY_RULES: Array<[string, RegExp]> = [
   ['ai-builder', /\b(ai app|app builder|build apps?|website builder|no.?code|vibe cod|lovable|bolt|v0)\b/i],

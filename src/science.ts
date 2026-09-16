@@ -67,7 +67,7 @@ app.innerHTML = `
     <div class="science-demo" aria-hidden="true"><div class="demo-card demo-a"><span>A</span></div><div class="demo-card demo-b"><span>B</span></div><div class="demo-choice"><b>←</b><span>which one?</span><b>→</b></div></div>
   </section>
   <section class="science-game" id="scienceGame" hidden>
-    <div class="round-head"><div><span class="round-label">YOUR GUT REACTION</span><h1>Which page grabs you?</h1><p>Click the one you would explore. Don’t overthink it.</p></div><div class="round-count"><b id="roundNum">1</b><span>/ 5</span></div></div>
+    <div class="round-head"><div><span class="round-label">YOUR GUT REACTION</span><h1>Which page grabs you?</h1><p>Click the one you would explore. Don’t overthink it. The fly’s picks stay sealed until the end.</p></div><div class="round-count"><b id="roundNum">1</b><span>/ 5</span></div></div>
     <div class="pair" id="pair"></div>
     <div class="reveal" id="reveal" hidden></div>
     <div class="science-progress"><i id="progress"></i></div>
@@ -79,6 +79,7 @@ app.innerHTML = `
     <div class="agreement-orbit"><span id="agreementNum">0%</span><i aria-hidden="true">✦</i></div>
     <h1 id="agreementTitle">You and the fly see eye to eye.</h1>
     <p id="agreementCopy"></p>
+    <ol class="recap" id="recap" aria-label="Your five choices against the fly's"></ol>
     <div class="science-share-card" id="scienceSharePreview"><span>LAND OR BOUNCE · SCIENCE</span><strong><b id="shareAgreement">0%</b> fly match</strong><small id="shareLine">I made five gut decisions. The fly had opinions.</small><em>Would your eyes agree? →</em></div>
     <div class="finish-actions"><button class="primary-button share-button" id="shareScience" disabled>${SHARE_ICON}<span id="shareScienceText">Preparing card…</span></button><a class="secondary-button" href="/">Test your own page</a><button class="secondary-button" id="againScience">Play again</button></div>
     ${activityMarkup()}
@@ -89,8 +90,12 @@ app.innerHTML = `
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 const refreshActivity = startActivity();
+/** One finished round, kept until the results screen so the fly's picks can be shown all at once. */
+type Outcome = { human: Candidate; fly: Candidate; agreed: boolean };
+
 let round = 0;
 let agreements = 0;
+let history: Outcome[] = [];
 let locked = false;
 let currentPair: Pair = pairs[0];
 let sessionId = crypto.randomUUID();
@@ -98,7 +103,8 @@ const participantId = anonymousParticipantId();
 let usedCategories = new Set<string>();
 let roundStarted = performance.now();
 const GLANCE_MS = 5000;
-const REVEAL_MS = 1500;
+/** The pause after a pick. Nothing is revealed here, so it only needs to register the click. */
+const REVEAL_MS = 700;
 let countdownFrame = 0;
 let advanceTimer = 0;
 let scienceShareLink = `${location.origin}/science`;
@@ -176,15 +182,16 @@ function choose(side: 'left' | 'right'): void {
   const fly = pair.left.fly >= pair.right.fly ? pair.left : pair.right;
   const agreed = human.id === fly.id;
   if (agreed) agreements += 1;
+  history.push({ human, fly, agreed });
   $('pair').classList.add('has-pick');
   $('pair').querySelectorAll<HTMLButtonElement>('.site-choice').forEach((button) => {
     button.classList.toggle('picked', button.dataset.side === side);
     button.disabled = true;
   });
-  const humanPercent = pair.humanLeft == null ? null : side === 'left' ? pair.humanLeft : 100 - pair.humanLeft;
+  // The fly's pick is not shown here on purpose: seeing it would steer the next rounds.
   const reveal = $('reveal');
-  reveal.className = `reveal ${agreed ? 'agree' : 'disagree'}`;
-  reveal.innerHTML = `<div><span>${agreed ? 'SAME INSTINCT' : 'SPLIT DECISION'}</span><strong>${agreed ? 'The fly picked it too.' : `The fly picked ${escapeHtml(fly.host)}.`}</strong><small>${humanPercent == null ? 'Your choice is now part of the study.' : `${humanPercent}% of humans picked ${escapeHtml(human.host)} in this demo.`}</small></div><span class="auto-next">${round === pairs.length - 1 ? 'Your result' : 'Next pair'} →</span>`;
+  reveal.className = 'reveal sealed';
+  reveal.innerHTML = `<div><span>LOCKED IN</span><strong>${escapeHtml(human.host)}</strong><small>${round === pairs.length - 1 ? 'The fly’s five picks are up next.' : 'The fly’s pick stays sealed until the end.'}</small></div><span class="auto-next">${round === pairs.length - 1 ? 'Your result' : 'Next pair'} →</span>`;
   reveal.hidden = false;
   $('progress').style.width = `${(round + 1) * 20}%`;
   if (pair.live && pair.left.captureId && pair.right.captureId && human.captureId && fly.captureId) {
@@ -205,6 +212,7 @@ function next(): void {
   $('shareAgreement').textContent = `${pct}%`;
   $('agreementTitle').textContent = agreements >= 4 ? 'You and the fly see eye to eye.' : agreements >= 2 ? 'You agree on some things.' : 'Your eyes live in different worlds.';
   $('agreementCopy').textContent = `You picked the same page as the fly ${agreements} out of ${pairs.length} times. ${agreements >= 3 ? 'Low-level visual contrast often pulled you in the same direction.' : 'Your choices may rely more on meaning, familiarity or taste than the fly’s early visual circuitry.'}`;
+  $('recap').innerHTML = history.map((outcome, index) => `<li class="${outcome.agreed ? 'agree' : 'disagree'}"><b>${index + 1}</b><span><small>You</small>${escapeHtml(outcome.human.host)}</span><span><small>Fly</small>${escapeHtml(outcome.fly.host)}</span><i>${outcome.agreed ? 'Same' : 'Split'}</i></li>`).join('');
   $('shareLine').textContent = `I agreed with the fly ${agreements} out of 5 times.`;
   celebrate();
   void prepareScienceShare(pct);
@@ -264,7 +272,7 @@ function shareScience(): void {
 
 function start(): void {
   stopTimers();
-  round = 0; agreements = 0;
+  round = 0; agreements = 0; history = [];
   usedCategories = new Set();
   sessionId = crypto.randomUUID();
   $('scienceIntro').hidden = true;

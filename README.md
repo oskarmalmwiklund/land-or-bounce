@@ -49,8 +49,10 @@ footer and "How it works" say so in words; `LABS.md` has the badge for other exp
 ### Human vs fly experiment
 
 `/science` is a five-choice companion experience: visitors pick which of two landing pages
-grabs them, immediately see whether the fly chose the same page, and finish with their personal
-agreement rate. A notice beside the website form explains that submission consents to inclusion
+grabs them, and only at the end see the fly's five picks beside their own and their personal
+agreement rate. The fly's choice is sealed during the rounds so it cannot steer the next pick;
+votes carry a prompt version (`grabs-you-v1` revealed per round, `grabs-you-v2-blind` does not),
+so the two designs can be analysed apart. A notice beside the website form explains that submission consents to inclusion
 in the research dataset and comparison pool. Completed website verdicts save automatically and
 invite visitors to participate. Dropped screenshots remain local. Website screenshots live in Vercel Blob;
 site metadata, versioned fly runs, anonymous sessions and pairwise votes live in Neon Postgres.
